@@ -43,6 +43,16 @@
 <?php } ?>
 										</select>
 									</fieldset>
+									<fieldset class="form-group">
+										<label for="periodFilter">Filter by time period</label>
+										<select class="form-control" id="periodFilter">
+											<option value="">No filter</option>
+											<option value="past">Past</option>
+											<option value="active">Active</option>
+											<option value="soon">Soon (next two weeks)</option>
+											<option value="future">Future</option>
+										</select>
+									</fieldset>
 <?php if (isset($user)) { ?>
 									<fieldset class="form-group">
 										<label><input type="checkbox" id="followedFilter"> Only show reports that I follow</label>

@@ -75,6 +75,17 @@ switch($folders[1]) {
 			$where_args[] = 'r.required_editor_level = :level';
 			$where_params[':level'] = $level;
 		}
+		$periods = array(
+			'past' => 'r.end_time < :current',
+			'active' => 'r.start_time < :current AND r.end_time > :current',
+			'soon' => 'r.start_time > :current AND r.start_time < :current + 1209600', // 2 weeks ahead
+			'future' => 'r.start_time > :current'
+		);
+		$period = (array_key_exists('period', $_GET) && array_key_exists($_GET['period'], $periods) ? $_GET['period'] : '');
+		if ($period != '') {
+			$where_args[] = $periods[$period];
+			$where_params[':current'] = time();
+		}
 		$followed = isset($user) && array_key_exists('followed', $_GET) && $_GET['followed'] == '1';
 		if ($followed) {
 			$where_args[] = 'f.user_id = ' . $user->id . ' AND r.id = f.report_id';

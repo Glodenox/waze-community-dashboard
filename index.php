@@ -63,10 +63,12 @@ if (isset($_SESSION['user_id'])) {
 }
 $todo_count = array();
 $reports_area = (isset($user) ? ' AND lon BETWEEN ' . $user->area_west . ' AND ' . $user->area_east . ' AND lat BETWEEN ' . $user->area_south . ' AND ' . $user->area_north : '');
-$stmt = $db->prepare('SELECT count(id) FROM dashboard_reports WHERE status IN (' . STATUS_REPORTED . ',' . STATUS_UPDATED . ',' . STATUS_TO_REMOVE . ') AND end_time >= :current_time' . $reports_area);
+$stmt = $db->prepare('SELECT count(id) FROM dashboard_reports WHERE status IN (' . STATUS_REPORTED . ',' . STATUS_UPDATED . ',' . STATUS_TO_REMOVE . ') AND start_time BETWEEN :current_time AND (:current_time + 1209600)' . $reports_area);
 $result = $stmt->execute(array('current_time' => time()));
 if ($result) {
 	$todo_count['reports'] = $stmt->fetchColumn();
+} else {
+	$code_errors[] = print_r($stmt->errorInfo(), true);
 }
 $stmt = $db->prepare('SELECT count(id) FROM dashboard_support_topics WHERE status = 1');
 $result = $stmt->execute();

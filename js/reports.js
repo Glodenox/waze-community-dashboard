@@ -274,6 +274,7 @@ Dashboard.ListView.prototype.refresh = function(page) {
 		source: localStorage.sourceFilter,
 		priority: localStorage.priorityFilter,
 		level: localStorage.editorLevelFilter,
+		period: localStorage.periodFilter,
 		followed: (localStorage.followedFilter == 'true' ? 1 : 0),
 		bounds: bounds.west + ',' + bounds.south + ',' + bounds.east + ',' + bounds.north
 	};
@@ -865,6 +866,10 @@ window.addEventListener('load', function() {
 		localStorage.editorLevelFilter = editorLevelFilter.value;
 	}
 	editorLevelFilter.value = localStorage.editorLevelFilter;
+	if (!localStorage.periodFilter) {
+		localStorage.periodFilter = 'soon';
+	}
+	periodFilter.value = localStorage.periodFilter;
 	if (!localStorage.reportsFilterArea) {
 		localStorage.reportsFilterArea = JSON.stringify(datasetBounds);
 	}
@@ -907,6 +912,10 @@ window.addEventListener('load', function() {
 	});
 	editorLevelFilter.addEventListener('change', function(event) {
 		localStorage.editorLevelFilter = editorLevelFilter.value;
+		listView.refresh();
+	});
+	periodFilter.addEventListener('change', function(event) {
+		localStorage.periodFilter = periodFilter.value;
 		listView.refresh();
 	});
 	if (followedFilter) {
