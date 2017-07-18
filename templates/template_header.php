@@ -131,7 +131,7 @@ var Status = (function() {
 					</div>
 					<script>
 if (localStorage.ignoreMessage == null && confirm('This is the testing environment of the Community Dashboard. Do you wish to be redirected to the production environment on wazebelgium.be instead?')) {
-	window.location = (window.location + "").replace('https://home.tomputtemans.com/waze-', 'http://www.wazebelgium.be/');
+	window.location = (window.location + "").replace('https://home.tomputtemans.com/waze/', 'http://www.wazebelgium.be/');
 } else {
 	localStorage.ignoreMessage = true;
 }

@@ -40,7 +40,7 @@ if ($path == '') {
 	$path = 'index';
 }
 $folders = explode('/', $path);
-$folders = array_merge($folders, array_fill(count($folders), 3 - count($folders), ''));
+$folders = array_merge($folders, array_fill(count($folders), max(3 - count($folders), 0), ''));
 
 require('common.php');
 
