@@ -3,7 +3,7 @@
 					<h1 class="page-header">Reports</h1>
 					<div id="list-view">
 						<div class="tab-pane active filters container-fluid" id="geographicsearch">
-							<div class="col-sm-12 col-md-6">
+							<div style="margin-right:15px">
 								<form action="#" method="GET">
 									<fieldset class="form-group">
 										<label for="reportStatusFilter">Filter by report status</label>
@@ -60,7 +60,7 @@
 <?php } ?>
 								</form>
 							</div>
-							<div id="filterMap" class="col-sm-12 col-md-6"></div>
+							<div id="filterMap"></div>
 						</div>
 						<nav class="text-center">
 							<ul id="pagination" class="pagination"></ul>
