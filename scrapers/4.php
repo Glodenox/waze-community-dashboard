@@ -17,6 +17,7 @@ class Scraper {
 		global $db, $code_errors;
 
 		set_time_limit(0);
+		restore_error_handler();
 
 		$h = curl_init('https://www.wegstatus.nl/feeds/wwjson.php');
 		curl_setopt_array($h, array(
@@ -84,10 +85,17 @@ class Scraper {
 			$endDateTime = new DateTime($roadwork->endDateTime, new DateTimeZone('Europe/Brussels'));
 			$updateDateTime = new DateTime($roadwork->updateDateTime, new DateTimeZone('Europe/Brussels'));
 			$coordinates = explode(', ', $roadwork->coordinates);
+			if ($roadwork->coordinates == '' || count($coordinates) == 0) {
+				continue; // if we can't put it on the map, it's no use to us
+			}
 			$line_string = array();
 			$middle_lon = $middle_lat = 0;
 			foreach ($coordinates as $coordinate) {
 				$coordinate = explode(' ', $coordinate);
+				if (count($coordinate) != 2) {
+					$code_errors[] = count($coordinate) . ' number(s) found for coordinate of wsId ' . $roadwork->wsId . '. Skipping.';
+					continue 2;
+				}
 				$middle_lat += $coordinate[0];
 				$middle_lon += $coordinate[1];
 				$line_string[] = array_reverse($coordinate);
