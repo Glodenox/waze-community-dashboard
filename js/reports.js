@@ -531,13 +531,15 @@ Dashboard.ReportView = function(viewManager, container) {
 		});
 	}
 	var commentsEditBtn = document.getElementById('report-comments-edit-btn');
+	if (commentsEditBtn) {
+		commentsEditBtn.addEventListener('click', function() {
+			commentsEditBtn.classList.toggle('hidden');
+			commentsView.classList.toggle('hidden');
+			commentsEditor.classList.toggle('hidden');
+		});
+	}
 	var commentsView = document.getElementById('report-comments');
 	var commentsEditor = document.getElementById('report-comments-edit');
-	commentsEditBtn.addEventListener('click', function() {
-		commentsEditBtn.classList.toggle('hidden');
-		commentsView.classList.toggle('hidden');
-		commentsEditor.classList.toggle('hidden');
-	});
 	document.getElementById('report-set-comments').addEventListener('click', function() {
 	var statusId = Status.show('info', 'Setting new comments');
 		Dashboard.loadPage(baseUrl + '/set-comments', { id: location.hash.substring(1), comments: document.getElementById('report-comments-source').value }, function() {
