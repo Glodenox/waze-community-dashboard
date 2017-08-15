@@ -43,7 +43,6 @@
 						<li<?php if (isset($active_module) && $active_module == 'reports') {?> class="active"<?php } ?>><a href="<?=ROOT_FOLDER?>reports"><i class="fa fa-map-marker fa-fw fa-lg"></i>&nbsp; Reports <span class="badge"><?=$todo_count['reports']?></span></a></li>
 						<li<?php if (isset($active_module) && $active_module == 'news_items') {?> class="active"<?php } ?>><a href="<?=ROOT_FOLDER?>news-items"><i class="fa fa-rss-square fa-fw fa-lg"></i>&nbsp; News Items <span class="badge">0</span></a></li>
 						<li<?php if (isset($active_module) && $active_module == 'support_topics') {?> class="active"<?php } ?>><a href="<?=ROOT_FOLDER?>support-topics"><i class="fa fa-life-ring fa-fw fa-lg"></i>&nbsp; Support Topics <span class="badge"><?=$todo_count['support-topics']?></span></a></li>
-						<li><a href="https://docs.google.com/spreadsheets/d/1qP1aFqkAQTtOqXmydRSOejtYMdFwtTRWaC2Y3475YMM/edit#gid=703487280" target="_blank"><i class="fa fa-road fa-fw fa-lg"></i>&nbsp; Closure Requests <span class="badge"><?=$todo_count['closure-requests']?></span></a></li>
 					</ul>
 					<ul class="nav navbar-nav visible-xs-block">
 						<li<?php if (isset($active_module) && $active_module == 'data_sources') {?> class="active"<?php } ?>><a href="<?=ROOT_FOLDER?>data-sources"><i class="fa fa-database fa-fw fa-lg"></i>&nbsp; Data Sources</a></li>
@@ -69,7 +68,6 @@
 						<li<?php if (isset($active_module) && $active_module == 'reports') {?> class="active"<?php } ?>><a href="<?=ROOT_FOLDER?>reports"><i class="fa fa-map-marker fa-fw fa-lg"></i>&nbsp; Reports <span class="badge"><?=$todo_count['reports']?></span></a></li>
 						<li<?php if (isset($active_module) && $active_module == 'news_items') {?> class="active"<?php } ?>><a href="<?=ROOT_FOLDER?>news-items"><i class="fa fa-rss-square fa-fw fa-lg"></i>&nbsp; News Items <span class="badge">0</span></a></li>
 						<li<?php if (isset($active_module) && $active_module == 'support_topics') {?> class="active"<?php } ?>><a href="<?=ROOT_FOLDER?>support-topics"><i class="fa fa-life-ring fa-fw fa-lg"></i>&nbsp; Support Topics <span class="badge"><?=$todo_count['support-topics']?></span></a></li>
-						<li><a href="https://docs.google.com/spreadsheets/d/1qP1aFqkAQTtOqXmydRSOejtYMdFwtTRWaC2Y3475YMM/edit#gid=703487280" target="_blank"><i class="fa fa-road fa-fw fa-lg"></i>&nbsp; Closure Requests <span class="badge"><?=$todo_count['closure-requests']?></span></a></li>
 					</ul>
 					<ul class="nav nav-sidebar">
 						<li<?php if (isset($active_module) && $active_module == 'data_sources') {?> class="active"<?php } ?>><a href="<?=ROOT_FOLDER?>data-sources"><i class="fa fa-database fa-fw fa-lg"></i>&nbsp; Data Sources</a></li>
@@ -127,11 +125,11 @@ var Status = (function() {
 <?php if (DEBUG) { ?>
 				<div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2" style="margin-top:20px">
 					<div class="alert alert-info" role="alert">
-						<p><i class="fa fa-warning fa-fw fa-2x"></i> <strong>Watch out!</strong> This site is meant to be used for testing purposes only and might contain test data! The production environment is located at <a href="http://www.wazebelgium.be/dashboard/" class="alert-link">http://www.wazebelgium.be/dashboard/</a>.</p>
+						<p><i class="fa fa-warning fa-fw fa-2x"></i> <strong>Watch out!</strong> This site is meant to be used for testing purposes only and might contain test data! The production environment is located at <a href="https://www.wazebelgium.be/dashboard/" class="alert-link">https://www.wazebelgium.be/dashboard/</a>.</p>
 					</div>
 					<script>
 if (localStorage.ignoreMessage == null && confirm('This is the testing environment of the Community Dashboard. Do you wish to be redirected to the production environment on wazebelgium.be instead?')) {
-	window.location = (window.location + "").replace('https://home.tomputtemans.com/waze/', 'http://www.wazebelgium.be/');
+	window.location = (window.location + "").replace('https://home.tomputtemans.com/waze/', 'https://www.wazebelgium.be/');
 } else {
 	localStorage.ignoreMessage = true;
 }

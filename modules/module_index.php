@@ -34,13 +34,6 @@ $alerts = array(
 		'fa-class' => 'fa-life-ring',
 		'counter' => $todo_count['support-topics'],
 		'color' => $todo_count['support-topics'] <= 2 ? 'orange' : 'red'
-	),
-	array(
-		'name' => 'closure requests',
-		'url' => 'https://docs.google.com/spreadsheets/d/1qP1aFqkAQTtOqXmydRSOejtYMdFwtTRWaC2Y3475YMM/edit#gid=703487280',
-		'fa-class' => 'fa-road',
-		'counter' => $todo_count['closure-requests'],
-		'color' => $todo_count['closure-requests'] <= 2 ? 'orange' : 'red'
 	)
 );
 
