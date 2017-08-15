@@ -35,13 +35,15 @@ define('STATUS_PROCESSED', 3);
 define('STATUS_TO_REMOVE', 4);
 define('STATUS_REMOVED', 5);
 define('STATUS_TO_IGNORE', 6);
+define('STATUS_TO_INVESTIGATE', 7);
 const STATUSES = array(
 	STATUS_REPORTED => 'New',
 	STATUS_UPDATED => 'Updated',
 	STATUS_PROCESSED => 'Processed',
 	STATUS_TO_REMOVE => 'Cancelled',
 	STATUS_REMOVED => 'Archived',
-	STATUS_TO_IGNORE => 'To Ignore'
+	STATUS_TO_IGNORE => 'To Ignore',
+	STATUS_TO_INVESTIGATE => 'To Investigate'
 );
 
 try {

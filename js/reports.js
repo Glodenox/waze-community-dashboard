@@ -21,12 +21,14 @@ var fragmentFactory = {
 			var startLink = document.createElement('a');
 			startLink.href = '#' + id;
 			startLink.addEventListener('click', reportClick);
-			var startElement = document.createElement('time');
-			startElement.dateTime = startTime.toISOString();
-			startElement.appendChild(document.createTextNode(startTime.toShortDateString()));
-			startElement.appendChild(document.createElement('br'));
-			startElement.appendChild(document.createTextNode(startTime.toTimeString().substr(0, 5)));
-			startLink.appendChild(startElement);
+			if (startTime) {
+				var startElement = document.createElement('time');
+				startElement.dateTime = startTime.toISOString();
+				startElement.appendChild(document.createTextNode(startTime.toShortDateString()));
+				startElement.appendChild(document.createElement('br'));
+				startElement.appendChild(document.createTextNode(startTime.toTimeString().substr(0, 5)));
+				startLink.appendChild(startElement);
+			}
 			start.appendChild(startLink);
 			row.appendChild(start);
 			var end = document.createElement('td');
@@ -141,6 +143,7 @@ var fragmentFactory = {
 		return container;
 	}
 };
+$.fn.tooltip.Constructor.DEFAULTS.trigger = 'hover';
 
 Dashboard = {}; // global namespace
 Dashboard.loadPage = function(url, params, callback) {
@@ -193,14 +196,19 @@ Dashboard.ListView = function(viewManager, container, filterMapContainer, report
 	this.reports = [];
 	this._mapLoaded = false;
 	this.reportList.reports = this.reports;
+	this._filterMap;
+	this._circle;
+	this._markers = [];
+	this._viewManager = viewManager;
+
 	this.refresh();
 };
 Dashboard.ListView.prototype = Object.create(Dashboard.View.prototype);
 Dashboard.ListView.prototype.activate = function() {
+	var self = this;
 	if (!this._mapLoaded) {
 		this._mapLoaded = true;
-		var self = this;
-		var filterMap = new google.maps.Map(this.filterMapContainer, {
+		self._filterMap = new google.maps.Map(this.filterMapContainer, {
 			center: { lat: (datasetBounds.north+datasetBounds.south)/2, lng: (datasetBounds.west+datasetBounds.east)/2 },
 			zoom: 7,
 			minZoom: 6,
@@ -209,15 +217,15 @@ Dashboard.ListView.prototype.activate = function() {
 			mapTypeControl: false,
 			streetViewControl: false
 		});
-		console.log('filterMap', filterMap);
+		console.log('filterMap', self._filterMap);
 		var filterBounds = new google.maps.Rectangle({
 			bounds: JSON.parse(localStorage.reportsFilterArea),
-			map: filterMap,
+			map: self._filterMap,
 			editable: true,
 			draggable: true,
 			zIndex: 10
 		});
-		filterMap.fitBounds(filterBounds.getBounds());
+		self._filterMap.fitBounds(filterBounds.getBounds());
 		var dragging = false;
 		filterBounds.addListener('drag', function() {
 			dragging = true;
@@ -234,9 +242,9 @@ Dashboard.ListView.prototype.activate = function() {
 			}
 		});
 		google.maps.event.addDomListener(window, "resize", function() {
-			var center = filterMap.getCenter();
-			google.maps.event.trigger(filterMap, "resize");
-			filterMap.setCenter(center); 
+			var center = self._filterMap.getCenter();
+			google.maps.event.trigger(self._filterMap, "resize");
+			self._filterMap.setCenter(center); 
 		});
 		if (typeof managementArea !== 'undefined') {
 			var controlDiv = document.createElement('div');
@@ -251,8 +259,16 @@ Dashboard.ListView.prototype.activate = function() {
 				filterBounds.setBounds(managementArea);
 			});
 			controlDiv.appendChild(resetAreaLink);
-			filterMap.controls[google.maps.ControlPosition.TOP_LEFT].push(controlDiv);
+			self._filterMap.controls[google.maps.ControlPosition.TOP_LEFT].push(controlDiv);
 		}
+		this._circle = {
+			path: google.maps.SymbolPath.CIRCLE,
+			fillColor: '#aa0000',
+			fillOpacity: 1,
+			scale: 3,
+			strokeColor: '#770000',
+			strokeWeight: 1
+		};
 		Dashboard.loadPage(baseUrl + '/heatmap', {}, function() {
 			var heatmapData = [];
 			this.response.heatmap.forEach(function(entry) {
@@ -261,7 +277,7 @@ Dashboard.ListView.prototype.activate = function() {
 			var heatmap = new google.maps.visualization.HeatmapLayer({
 				data: heatmapData
 			});
-			heatmap.setMap(filterMap);
+			heatmap.setMap(self._filterMap);
 		});
 	}
 	this.refresh(this.reportList.page);
@@ -285,6 +301,27 @@ Dashboard.ListView.prototype.refresh = function(page) {
 		self.reports.length = 0;
 		Array.prototype.push.apply(self.reports, this.response.reports);
 		console.log('ListView refreshed', this.response.reports);
+		self._markers.forEach(function(marker) {
+			marker.setMap(null);
+		});
+		self._markers = [];
+		this.response.reports.forEach(function(report) {
+			var marker = new google.maps.Marker({
+				position: {lat: report.lat, lng: report.lon},
+				map: self._filterMap,
+				title: report.description,
+				icon: self._circle
+			});
+			marker.addListener('click', function() {
+				if (history.pushState) {
+					history.pushState({ 'id': report.id, 'view': 'report' }, null, '#' + report.id);
+				} else {
+					location.hash = '#' + report.id;
+				}
+				self._viewManager.switchTo('report');
+			});
+			self._markers.push(marker);
+		});
 		self.reportList.refresh(page);
 	});
 };
@@ -334,7 +371,7 @@ Dashboard.ReportList.prototype.showPage = function(pageNumber) {
 	var pageReports = this.reports.slice(this.page * this.reportsPerPage, (this.page+1) * this.reportsPerPage);
 	var self = this;
 	pageReports.forEach(function(report) {
-		var startDate = new Date(report.start_time * 1000);
+		var startDate = report.start_time == null ? null : new Date(report.start_time * 1000);
 		var endDate = report.end_time == null ? null : new Date(report.end_time * 1000);
 		var row = fragmentFactory['ResultList/ReportRow'](report.id, report.priority, report.description, startDate, endDate, report.source_name, function(e) {
 			if (e.defaultPrevented || e.metaKey || e.ctrlKey) {
@@ -360,6 +397,7 @@ Dashboard.ReportView = function(viewManager, container) {
 	Dashboard.View.call(this, viewManager, 'report', container);
 	var reportView = this;
 	this._wazeMap = container.querySelector('#liveMap');
+	this._reportMap;
 	this._loadedLocation = (function() { // Object to store and compare currently loaded map coordinates
 		var lat = lon = 0;
 		return {
@@ -442,6 +480,37 @@ Dashboard.ReportView = function(viewManager, container) {
 		container: 'body',
 		title: 'Ctrl+C to copy coordinates'
 	});
+	var reportClaim = document.getElementById('claim');
+	if (reportClaim) {
+		reportClaim.addEventListener('click', function(e) {
+			e.preventDefault();
+			var unlocking = reportClaim.firstChild.classList.contains('fa-unlock-alt');
+			var statusId = Status.show('info', (unlocking ? 'Releasing claim' : 'Attempting to claim'));
+			Dashboard.loadPage(baseUrl + (unlocking ? '/release-claim' : '/claim'), { id: location.hash.substring(1) }, function() {
+				Status.hide(statusId);
+				reportClaim.classList.toggle('btn-danger', !this.response.ok);
+				$(reportClaim).tooltip('destroy');
+				if (this.response.ok) {
+					reportClaim.classList.toggle('btn-info', !reportClaim.firstChild.classList.contains('fa-unlock-alt'));
+					if (!reportClaim.firstChild.classList.contains('fa-unlock-alt')) {
+						reportClaim.firstChild.classList.remove('fa-rocket');
+						reportClaim.firstChild.classList.remove('fa-lock');
+						reportClaim.firstChild.classList.add('fa-unlock-alt');
+						reportClaim.title = 'Claimed by you';
+						$(reportClaim).tooltip();
+					} else {
+						reportClaim.firstChild.classList.remove('fa-unlock-alt');
+						reportClaim.firstChild.classList.add('fa-rocket');
+						reportClaim.title = '';
+					}
+				} else {
+					Status.show('danger', this.response.error);
+					reportClaim.title = this.response.error;
+					$(reportClaim).tooltip();
+				}
+			});
+		});
+	}
 	var reportFollow = document.getElementById('follow');
 	if (reportFollow) {
 		reportFollow.addEventListener('click', function(e) {
@@ -560,6 +629,11 @@ Dashboard.ReportView = function(viewManager, container) {
 		commentsView.classList.toggle('hidden');
 		commentsEditor.classList.toggle('hidden');
 	});
+	var self = this;
+	document.querySelector('#feature-details button.close').addEventListener('click', function() {
+		document.getElementById('feature-details').classList.add('hidden');
+		self._reportMap.data.revertStyle();
+	});
 };
 Dashboard.ReportView.prototype = Object.create(Dashboard.View.prototype);
 Dashboard.ReportView.prototype.activate = function(forceUpdate) {
@@ -597,6 +671,16 @@ Dashboard.ReportView.prototype.refresh = function() {
 	paginationButtons[1].disabled = reportIndex >= this.viewManager.get('list').reportList.reports.length - 1;
 	this.container.querySelector('#openInWME').href = 'https://www.waze.com/editor/?env=row&lon=' + report.lon + '&lat=' + report.lat + '&zoom=5';
 	this.container.querySelector('#copyCoords').dataset.coords = report.lon + ',' + report.lat;
+	var claim = this.container.querySelector('#claim');
+	if (claim) {
+		claim.firstChild.classList.toggle('fa-rocket', report.claimUserId == null);
+		claim.firstChild.classList.toggle('fa-unlock-alt', report.claimUserId == user.id);
+		claim.firstChild.classList.toggle('fa-lock', report.claimUserId != null && report.claimUserId != user.id);
+		claim.classList.toggle('btn-danger', report.claimUserId != null && report.claimUserId != user.id);
+		claim.classList.toggle('btn-info', report.claimUserId == user.id);
+		claim.title = (report.claimUserId == user.id ? 'Claimed by you' : (report.claimUserId == null ? '' : 'Claimed by ' + report.claimUsername + ' ' + Math.floor((Date.now()/1000 - report.claimTime) / 60) + ' minutes ago'));
+		$(claim).tooltip(report.claimUserId == null ? 'destroy' : {});
+	}
 	var follow = this.container.querySelector('#follow');
 	if (follow) {
 		follow.firstChild.classList.toggle('fa-star', report.following);
@@ -630,13 +714,16 @@ Dashboard.ReportView.prototype.refresh = function() {
 	description.appendChild(document.createTextNode(report.description));
 	var period = this.container.querySelector('.report-period');
 	period.removeAll();
-	var startTime = new Date(report.start_time * 1000);
-	var startElement = document.createElement('time');
-	startElement.dateTime = startTime.toISOString();
-	startElement.appendChild(document.createTextNode(startTime.toShortDateString()));
-	startElement.appendChild(document.createTextNode(' '));
-	startElement.appendChild(document.createTextNode(startTime.toTimeString().substr(0, 5)));
-	period.appendChild(startElement);
+	period.parentNode.style.display = (report.start_time || report.end_time ? 'block' : 'none');
+	if (report.start_time) {
+		var startTime = new Date(report.start_time * 1000);
+		var startElement = document.createElement('time');
+		startElement.dateTime = startTime.toISOString();
+		startElement.appendChild(document.createTextNode(startTime.toShortDateString()));
+		startElement.appendChild(document.createTextNode(' '));
+		startElement.appendChild(document.createTextNode(startTime.toTimeString().substr(0, 5)));
+		period.appendChild(startElement);
+	}
 	if (report.end_time) {
 		var pointer = document.createElement('i');
 		pointer.className = 'fa fa-chevron-right';
@@ -656,9 +743,12 @@ Dashboard.ReportView.prototype.refresh = function() {
 	sourceLink.href = 'data-sources/' + report.source;
 	sourceLink.appendChild(document.createTextNode(report.source_name));
 	source.appendChild(sourceLink);
+	var detailsPanel = document.getElementById('feature-details');
+	detailsPanel.classList.add('hidden');
 	var externalData = this.container.querySelector('#externalData');
 	externalData.removeAll();
-	if (report.external_data != null) {
+	externalData.style.display = report.external_data == '' ? 'none' : 'block';
+	if (report.external_data != '') {
 		var dl = document.createElement('dl');
 		dl.classList.add('dl-horizontal');
 		Object.keys(report.external_data)
@@ -783,11 +873,17 @@ Dashboard.ReportView.prototype.refresh = function() {
 				});
 			}
 		};
-		if (report.geojson.coordinates) {
+		if (report.geojson.coordinates) { // Polygon
 			dfs(report.geojson.coordinates);
-		} else if (report.geojson.geometries) {
+		} else if (report.geojson.geometries) { // GeometryCollection
 			report.geojson.geometries.forEach(function(geometry) {
 				dfs(geometry.coordinates)
+			});
+		} else if (report.geojson.geometry) { // Feature
+			dfs(report.geojson.geometry);
+		} else if (report.geojson.features) { // FeatureCollection
+			report.geojson.features.forEach(function(feature) {
+				dfs(feature.geometry.coordinates)
 			});
 		}
 		var center = bounds.getCenter();
@@ -802,7 +898,7 @@ Dashboard.ReportView.prototype.refresh = function() {
 		this._loadedLocation.set(center.lat, center.lng);
 		this._wazeMap.contentWindow.location.replace('https://embed.waze.com/en/iframe?lon=' + center.lng() + '&lat=' + center.lat() + '&zoom=16');
 	}
-	var reportMap = new google.maps.Map(this.container.querySelector('#reportMap'), {
+	this._reportMap = new google.maps.Map(this.container.querySelector('#reportMap'), {
 		zoom: 16,
 		clickableIcons: false,
 		mapTypeControl: false,
@@ -810,20 +906,85 @@ Dashboard.ReportView.prototype.refresh = function() {
 		center: center
 	});
 	google.maps.event.addDomListener(window, "resize", function() {
-		var center = reportMap.getCenter();
-		google.maps.event.trigger(reportMap, "resize");
-		reportMap.setCenter(center); 
+		var center = self._reportMap.getCenter();
+		google.maps.event.trigger(self._reportMap, "resize");
+		self._reportMap.setCenter(center); 
 	});
 	if (report.geojson) {
-		reportMap.fitBounds(bounds);
-		var feature = {
-			type: 'Feature',
-			geometry: report.geojson
-		};
-		reportMap.data.setStyle({
-			clickable: false
+		this._reportMap.fitBounds(bounds);
+		var feature;
+		if (report.geojson.type != 'Feature' && report.geojson.type != 'FeatureCollection') {
+			feature = {
+				type: 'Feature',
+				geometry: report.geojson
+			};
+		} else {
+			feature = report.geojson;
+		}
+		this._reportMap.data.setStyle((function() {
+			var greens = 0;
+			var reds = 0;
+			return function(feature) {
+				if (!feature.getProperty || !feature.getProperty('style')) {
+					return { 'clickable': false };
+				}
+				if (feature.getProperty('style') == 'ADDED') {
+					greens = (greens == 5 ? 0 : greens + 1);
+					return {
+						strokeColor: '#00' + (155+greens*20).toString(16) + '00',
+						zIndex: 100,
+						strokeWeight: 6
+					};
+				}
+				if (feature.getProperty('style') == 'DELETED') {
+					reds = (reds == 5 ? 0 : reds + 1);
+					return {
+						strokeColor: '#' + (155+reds*20).toString(16) + '0000',
+						zIndex: 90,
+						strokeWeight: 18
+					};
+				}
+				return { 'clickable': false };
+			}
+		})());
+		this._reportMap.addListener('click', function() {
+			detailsPanel.classList.add('hidden');
+			self._reportMap.data.revertStyle();
 		});
-		reportMap.data.addGeoJson(feature);
+		this._reportMap.data.addListener('click', function(event) {
+			if (!event.feature) {
+				return;
+			}
+			self._reportMap.data.revertStyle();
+			self._reportMap.data.overrideStyle(event.feature, {
+				strokeColor: 'yellow',
+				zIndex: event.feature.getProperty('style') == 'ADDED' ? 105 : 95
+			});
+
+			var detailsTable = detailsPanel.querySelector('tbody');
+			detailsTable.removeAll();
+			event.feature.forEachProperty(function(value, name) {
+				var row = document.createElement('tr');
+				var propertyName = document.createElement('th');
+				propertyName.appendChild(document.createTextNode(name));
+				row.appendChild(propertyName);
+				var propertyValue = document.createElement('td');
+				propertyValue.appendChild(document.createTextNode(value));
+				row.appendChild(propertyValue);
+				detailsTable.appendChild(row);
+			});
+			detailsPanel.classList.remove('hidden');
+			detailsPanel.scrollIntoView(false);
+		});
+		this._reportMap.data.addGeoJson(feature);
+	} else {
+		this._reportMap.data.addGeoJson({
+			type: 'Feature',
+			geometry: {
+				type: 'Point',
+				coordinates: [report.lon, report.lat]
+			}
+		});
 	}
 
 	var historyList = this.container.querySelector('#report-history');

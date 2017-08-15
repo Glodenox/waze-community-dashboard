@@ -106,12 +106,15 @@
 								</div>
 <?php if (isset($user)) { ?>
 								<div class="btn-group">
+									<button class="btn btn-default" id="claim"><i class="fa fa-fw fa-rocket"></i> I'm on it!</button>
+								</div>
+								<div class="btn-group">
 									<button class="btn btn-default" id="follow"><i class="fa fa-star"></i></button>
 								</div>
 								<div class="btn-group">
 									<button class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Set report status <span class="caret"></span></button>
 									<ul class="dropdown-menu" id="reportStatus">
-<?php foreach(array(STATUS_REPORTED, STATUS_PROCESSED, STATUS_TO_IGNORE, STATUS_REMOVED) as $status) { ?>
+<?php foreach(array(STATUS_REPORTED, STATUS_PROCESSED, STATUS_TO_INVESTIGATE, STATUS_TO_IGNORE, STATUS_REMOVED) as $status) { ?>
 										<li><a href="#" data-value="<?=$status?>"><?=STATUSES[$status]?></a></li>
 <?php } ?>
 									</ul>
@@ -180,6 +183,10 @@
 								</div>
 								<div class="col-sm-12 col-md-6"><div class="embed-responsive" style="height:400px"><iframe id="liveMap" class="embed-responsive-item"></iframe></div></div>
 							</div>
+							<div class="panel panel-default hidden" id="feature-details">
+								<div class="panel-heading">Selected item details<button type="button" class="close" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+								<table class="table table-striped table-condensed"><tbody></tbody></table>
+							</div>
 							<h3>Additional External Data</h3>
 							<div class="row">
 								<div class="col-sm-6" id="externalData"></div>
@@ -214,6 +221,10 @@ var managementArea = {
 	west: <?=$user->area_west?>,
 	east: <?=$user->area_east?>
 };
+var user = {
+	username: "<?=addslashes($user->name)?>",
+	id: <?=$user->id?>
+}
 <?php } ?>
 				</script>
 				<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDH7C24331Mc6DQJc7xf7gxMOb3Z69yZ-E&amp;libraries=visualization"></script>

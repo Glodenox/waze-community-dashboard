@@ -83,7 +83,7 @@ switch($folders[1]) {
 		);
 		$period = (array_key_exists('period', $_GET) && array_key_exists($_GET['period'], $periods) ? $_GET['period'] : '');
 		if ($period != '') {
-			$where_args[] = $periods[$period];
+			$where_args[] = '((' . $periods[$period] . ') OR (r.end_time IS NULL AND r.start_time IS NULL))';
 			$where_params[':current'] = time();
 		}
 		$followed = isset($user) && array_key_exists('followed', $_GET) && $_GET['followed'] == '1';
@@ -91,7 +91,7 @@ switch($folders[1]) {
 			$where_args[] = 'f.user_id = ' . $user->id . ' AND r.id = f.report_id';
 		}
 
-		$stmt = $db->prepare('SELECT r.id, r.start_time, r.end_time, r.description, r.priority, r.source, s.name AS source_name FROM dashboard_reports r, dashboard_sources s' . ($followed ? ', dashboard_report_follow f' : '') . ' WHERE ' . implode(' AND ', $where_args) . ' ORDER BY r.start_time LIMIT 300');
+		$stmt = $db->prepare('SELECT r.id, r.start_time, r.end_time, r.lon, r.lat, r.description, r.priority, r.source, s.name AS source_name FROM dashboard_reports r, dashboard_sources s' . ($followed ? ', dashboard_report_follow f' : '') . ' WHERE ' . implode(' AND ', $where_args) . ' ORDER BY r.start_time LIMIT 300');
 		execute($stmt, $where_params);
 		$reports = $stmt->fetchAll(PDO::FETCH_OBJ);
 		json_send(array(
@@ -115,7 +115,7 @@ switch($folders[1]) {
 			$report['external_data'] = unserialize($report['external_data']);
 		}
 		$report['geojson'] = json_decode($report['geojson']);
-		if (!$report['external_data'] || count($report['external_data']) == 0 || (isset($_GET['force']) && isset($user))) {
+		if (file_exists('scrapers/' . $report['source'] . '.php') && (!$report['external_data'] || count($report['external_data']) == 0 || (isset($_GET['force']) && isset($user)))) {
 			require('scrapers/' . $report['source'] . '.php');
 			$scraper = new Scraper();
 			try {
@@ -146,6 +146,12 @@ switch($folders[1]) {
 			$stmt = $db->prepare('SELECT report_id FROM dashboard_report_follow WHERE report_id = :report_id AND user_id = :user_id');
 			execute($stmt, array(':report_id' => $report_id, ':user_id' => $user->id));
 			$report['following'] = $stmt->rowCount() > 0;
+			$stmt = $db->prepare('SELECT id, name, claim_time FROM dashboard_users WHERE claim_report = :report_id');
+			execute($stmt, array(':report_id' => $report_id));
+			$claim = $stmt->fetch(PDO::FETCH_OBJ);
+			$report['claimUserId'] = ($claim === FALSE ? null : $claim->id);
+			$report['claimUsername'] = ($claim === FALSE ? null : $claim->name);
+			$report['claimTime'] = ($claim === FALSE ? null : $claim->claim_time);
 		}
 		json_send(array(
 			'report' => $report
@@ -284,8 +290,46 @@ switch($folders[1]) {
 		));
 		json_send();
 
+	case 'claim':
+		$report_id = (int)$_GET['id'];
+		if ($report_id == 0) {
+			json_fail('No report ID or invalid report ID provided');
+		}
+		if (!isset($user)) {
+			json_fail('User not logged in');
+		}
+		$stmt = $db->prepare('SELECT id, name, claim_time FROM dashboard_users WHERE claim_report = :report_id');
+		execute($stmt, array(':report_id' => $report_id));
+		$current_claim = $stmt->fetch(PDO::FETCH_OBJ);
+		if ($current_claim !== FALSE) {
+			if ($current_claim->claim_time > time() - 60*15) {
+				json_fail('This report has been recently claimed by ' . addslashes($current_claim->name) . ' already.');
+			} else {
+				$stmt = $db->prepare('UPDATE dashboard_users SET claim_report = NULL, claim_time = NULL WHERE id = :user_id');
+				execute($stmt, array(
+					':user_id' => $current_claim->id
+				));
+			}
+		}
+		$stmt = $db->prepare('UPDATE dashboard_users SET claim_report = :report_id, claim_time = UNIX_TIMESTAMP() WHERE id = :user_id');
+		execute($stmt, array(
+			':report_id' => $report_id,
+			':user_id' => $user->id
+		));
+		json_send();
+
+	case 'release_claim':
+		if (!isset($user)) {
+			json_fail('User not logged in');
+		}
+		$stmt = $db->prepare('UPDATE dashboard_users SET claim_report = NULL, claim_time = NULL WHERE id = :user_id');
+		execute($stmt, array(
+			':user_id' => $user->id
+		));
+		json_send();
+
 	default:
-		json_fail('No known action defined');
+		json_fail('Unknown action requested');
 }
 
 /**
