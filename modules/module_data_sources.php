@@ -20,10 +20,10 @@ if (is_numeric($folders[1]) && !$folders[2]) { // Display the individual source 
 				$stmt = $db->query('SELECT round(lon, 1) as lon, round(lat, 1) as lat, count(id) as reports FROM dashboard_reports WHERE source = ' . $sourceId . ' GROUP BY 1, 2');
 				$heatmap = $stmt->fetchAll(PDO::FETCH_OBJ);
 				if ($source->data_type == 'Reports') {
-					$stmt = $db->query('SELECT status, count(id) as count FROM dashboard_reports WHERE source = ' . $sourceId . ' GROUP BY status');
+					$stmt = $db->query('SELECT status, count(id) as count FROM dashboard_reports WHERE source = ' . $sourceId . ' AND status <> 5 GROUP BY status');
 					$source_stats = $stmt->fetchAll(PDO::FETCH_OBJ);
 					if (isset($user)) {
-						$stmt = $db->query('SELECT value as status, count(DISTINCT id) as count FROM dashboard_report_history h, dashboard_reports r WHERE h.report_id = r.id AND user_id = ' . $user->id . ' AND action_id = 3 AND r.source = ' . $sourceId . ' GROUP BY value');
+						$stmt = $db->query('SELECT value as status, count(DISTINCT id) as count FROM dashboard_report_history h, dashboard_reports r WHERE h.report_id = r.id AND user_id = ' . $user->id . ' AND action_id = 3 AND r.source = ' . $sourceId . ' AND status <> 5 GROUP BY value');
 						$source_personal_stats = $stmt->fetchAll(PDO::FETCH_OBJ);
 					}
 				}
