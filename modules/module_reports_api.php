@@ -146,7 +146,7 @@ switch($folders[1]) {
 			$stmt = $db->prepare('SELECT report_id FROM dashboard_report_follow WHERE report_id = :report_id AND user_id = :user_id');
 			execute($stmt, array(':report_id' => $report_id, ':user_id' => $user->id));
 			$report['following'] = $stmt->rowCount() > 0;
-			$stmt = $db->prepare('SELECT id, name, claim_time FROM dashboard_users WHERE claim_report = :report_id');
+			$stmt = $db->prepare('SELECT id, name, claim_time FROM dashboard_users WHERE claim_report = :report_id AND claim_time > UNIX_TIMESTAMP() - 60*60');
 			execute($stmt, array(':report_id' => $report_id));
 			$claim = $stmt->fetch(PDO::FETCH_OBJ);
 			$report['claimUserId'] = ($claim === FALSE ? null : $claim->id);
@@ -190,9 +190,13 @@ switch($folders[1]) {
 			':status' => $status,
 			':report_id' => $report_id
 		));
+		$stmt = $db->prepare('SELECT process_auto_jump FROM dashboard_users WHERE id = :user_id');
+		execute($stmt, array(':user_id' => $user->id));
+		$process_auto_jump = $stmt->fetch(PDO::FETCH_OBJ)->process_auto_jump;
 		$user_following = handle_action($report_id, ACTION_SET_STATUS, $status, STATUSES[$status]);
 		json_send(array(
-			'following' => $user_following
+			'following' => $user_following,
+			'autojump' => $process_auto_jump ? true : false
 		));
 
 	case 'set_comments':

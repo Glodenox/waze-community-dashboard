@@ -19,6 +19,18 @@
 						</dl>
 						<h3>Preferences</h3>
 						<form class="form-horizontal">
+							<div class="form-group">
+								<label class="control-label col-sm-3">Report processing</label>
+								<div class="help-block col-sm-9">After changing the status of a report</div>
+								<div class="col-sm-9 col-sm-offset-3">
+									<div class="radio">
+										<label><input type="radio" name="auto-jump" id="autoJumpOn"<?=($user->process_auto_jump ? ' checked="checked"' : '')?>/> jump to the next report in the results</label>
+									</div>
+									<div class="radio">
+										<label><input type="radio" name="auto-jump" id="autoJumpOff"<?=(!$user->process_auto_jump ? ' checked="checked"' : '')?>/> remain at the current report</label>
+									</div>
+								</div>
+							</div>
 <?php /*							<div class="form-group">
 								<label class="control-label col-sm-3" for="editorLevel">Editor level</label>
 								<div class="col-sm-9 col-sm-offset-3">
@@ -32,7 +44,7 @@
 										<option value="6">6</option>
 									</select>
 								</div>
-								<span class="help-block col-sm-9" id="editorLevelHelp>Your editor level within the Waze Map Editor. This setting is only used for visual cues.</span>
+								<span class="help-block col-sm-9" id="editorLevelHelp">Your editor level within the Waze Map Editor. This setting is only used for visual cues.</span>
 							</div>
 */ ?>
 							<div class="form-group">
@@ -197,6 +209,24 @@ if (count($action_stats) > 0) {
 	window.addEventListener('resize', function() {
 		console.log('resized');
 		chart.draw(actions, options);
+	});
+});
+document.getElementById('autoJumpOn').addEventListener('click', function() {
+	loadPage('<?=ROOT_FOLDER?>profile/change-autojump', { autojump: true }, function() {
+		if (this.response.ok) {
+			Status.show('success', 'Preference updated', 4000);
+		} else {
+			Status.show('danger', this.response.error);
+		}
+	});
+});
+document.getElementById('autoJumpOff').addEventListener('click', function() {
+	loadPage('<?=ROOT_FOLDER?>profile/change-autojump', { autojump: false }, function() {
+		if (this.response.ok) {
+			Status.show('success', 'Preference updated', 4000);
+		} else {
+			Status.show('danger', this.response.error);
+		}
 	});
 });
 					</script>

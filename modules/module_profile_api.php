@@ -26,13 +26,13 @@ switch($folders[1]) {
 		execute($stmt, array($_GET['north'], $_GET['east'], $_GET['south'], $_GET['west'], $user->id));
 		json_send();
 
-	case 'change-follow':
+	case 'change_follow':
 		json_fail('Not implemented');
 
-	case 'set-editor-level':
+	case 'set_editor_level':
 		json_fail('Not implemented');
 
-	case 'change-notification':
+	case 'change_notification':
 		if (!array_key_exists('user_id', $_SESSION)) {
 			json_fail("User isn't logged in");
 		}
@@ -42,11 +42,26 @@ switch($folders[1]) {
 		$stmt = $db->prepare('UPDATE dashboard_users SET notify_bits = :config WHERE id = :user_id');
 		execute($stmt, array(
 			'config' => (int) $_GET['config'],
-			'user_id' => (int) $_SESSION['user_id']
+			'user_id' => $user->id
 		));
 		json_send();
 
-	case 'change-follow-defaults':
+	case 'change_autojump':
+		if (!array_key_exists('user_id', $_SESSION)) {
+			json_fail("User isn't logged in");
+		}
+		if (!isset($_GET['autojump'])) {
+			json_fail('Preference is missing in request');
+		}
+		$stmt = $db->prepare('UPDATE dashboard_users SET process_auto_jump = :autojump WHERE id = :user_id');
+		execute($stmt, array(
+			'autojump' => $_GET['autojump'] != 'false' ? 1 : 0,
+			'user_id' => $user->id
+		));
+		json_send();
+		break;
+
+	case 'change_follow_defaults':
 		if (!array_key_exists('user_id', $_SESSION)) {
 			json_fail("User isn't logged in");
 		}
@@ -56,7 +71,7 @@ switch($folders[1]) {
 		$stmt = $db->prepare('UPDATE dashboard_users SET follow_bits = :config WHERE id = :user_id');
 		execute($stmt, array(
 			'config' => (int) $_GET['config'],
-			'user_id' => (int) $_SESSION['user_id']
+			'user_id' => $user->id
 		));
 		json_send();
 
