@@ -55,7 +55,7 @@ if (isset($_SESSION['user_id'])) {
 	// In theory $_SESSION should be safe, but extra protection doesn't hurt here
 	$user_id = (int) $_SESSION['user_id'];
 	if ($user_id > 0) {
-		$stmt = $db->prepare('SELECT id, name, avatar, slack_user_id, slack_team_id, slack_access_token, follow_bits, notify_bits, area_north, area_east, area_south, area_west FROM dashboard_users WHERE id = ?');
+		$stmt = $db->prepare('SELECT id, name, avatar, slack_user_id, slack_team_id, slack_access_token, follow_bits, notify_bits, area_north, area_east, area_south, area_west, process_auto_jump FROM dashboard_users WHERE id = ?');
 		if ($stmt->execute(array($user_id))) {
 			$user = $stmt->fetchObject();
 		}
