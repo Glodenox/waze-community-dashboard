@@ -228,5 +228,5 @@ var user = {
 <?php } ?>
 				</script>
 				<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDH7C24331Mc6DQJc7xf7gxMOb3Z69yZ-E&amp;libraries=visualization"></script>
-				<script src="<?=ROOT_FOLDER?>js/reports.js"></script>
+				<script src="<?=ROOT_FOLDER?>js/reports.js?<?=substr(md5(filectime('js/reports.js')), 0, 10)?>"></script>
 <?php include('templates/template_footer.php'); ?>

@@ -538,8 +538,7 @@ Dashboard.ReportView = function(viewManager, container) {
 				if (this.response.ok) {
 					reportView.reportData.status = e.target.dataset.value;
 					reportView.reportData.following = reportView.reportData.following || this.response.following;
-					var jumpToNext = this.response.autojump ? !shiftHeld : shiftHeld;
-					if (this.response.autojump ? !shiftHeld : shiftHeld) {
+					if (!reportNavigation[1].disabled && this.response.autojump ? !shiftHeld : shiftHeld) {
 						reportNavigation[1].click();
 					} else {
 						reportView.refresh();

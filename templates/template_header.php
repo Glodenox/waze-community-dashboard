@@ -11,9 +11,9 @@
 
 		<link rel="icon" href="<?=ROOT_FOLDER?>images/favicon.ico" type="image/x-icon" />
 		<!-- Bootstrap core CSS -->
-		<link href="<?=ROOT_FOLDER?>css/bootstrap.min.css" rel="stylesheet"/>
-		<link href="<?=ROOT_FOLDER?>css/dashboard.css" rel="stylesheet"/>
-		<link href="<?=ROOT_FOLDER?>css/font-awesome.min.css" rel="stylesheet"/>
+		<link href="<?=ROOT_FOLDER?>css/bootstrap.min.css?<?=substr(md5(filectime('css/bootstrap.min.css')), 0, 10)?>" rel="stylesheet"/>
+		<link href="<?=ROOT_FOLDER?>css/dashboard.css?<?=substr(md5(filectime('css/dashboard.css')), 0, 10)?>" rel="stylesheet"/>
+		<link href="<?=ROOT_FOLDER?>css/font-awesome.min.css?<?=substr(md5(filectime('css/font-awesome.min.css')), 0, 10)?>" rel="stylesheet"/>
 	</head>
 
 	<body>
@@ -54,9 +54,9 @@
 			</div>
 		</nav>
 
-		<script src="<?=ROOT_FOLDER?>js/jquery.min.js"></script>
-		<script src="<?=ROOT_FOLDER?>js/jquery-ui.min.js"></script>
-		<script src="<?=ROOT_FOLDER?>js/bootstrap.min.js"></script>
+		<script src="<?=ROOT_FOLDER?>js/jquery.min.js?<?=substr(md5(filectime('js/jquery.min.js')), 0, 10)?>"></script>
+		<script src="<?=ROOT_FOLDER?>js/jquery-ui.min.js?<?=substr(md5(filectime('js/jquery-ui.min.js')), 0, 10)?>"></script>
+		<script src="<?=ROOT_FOLDER?>js/bootstrap.min.js?<?=substr(md5(filectime('js/bootstrap.min.js')), 0, 10)?>"></script>
 
 		<div class="container-fluid">
 			<div class="row">
