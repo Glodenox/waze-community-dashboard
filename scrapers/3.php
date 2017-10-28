@@ -4,7 +4,7 @@ if (!defined('IN_DASHBOARD')) {
 	exit;
 }
 
-define('SCRAPER_URL', 'https://www.waze.com/forum/viewforum.php?f=%u&mobile=mobile');
+define('SCRAPER_URL', 'https://www.waze.com/forum/viewforum.php?f=%u&mobile=mobile&sk=t&sd=d');
 define('SCRAPER_ID', 3);
 
 class Scraper {
