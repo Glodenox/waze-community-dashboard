@@ -187,7 +187,7 @@
 								<div class="panel-heading">Selected item details<button type="button" class="close" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
 								<table class="table table-striped table-condensed"><tbody></tbody></table>
 							</div>
-							<h3>Additional External Data</h3>
+							<h3>Additional Data</h3>
 							<div class="row">
 								<div class="col-sm-6" id="externalData"></div>
 								<div class="col-sm-6">

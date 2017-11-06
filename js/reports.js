@@ -211,8 +211,6 @@ Dashboard.ListView.prototype.activate = function() {
 		self._filterMap = new google.maps.Map(this.filterMapContainer, {
 			center: { lat: (datasetBounds.north+datasetBounds.south)/2, lng: (datasetBounds.west+datasetBounds.east)/2 },
 			zoom: 7,
-			minZoom: 6,
-			maxZoom: 11,
 			clickableIcons: false,
 			mapTypeControl: false,
 			streetViewControl: false
