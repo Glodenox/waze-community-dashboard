@@ -205,7 +205,6 @@ function time_elapsed_string($datetime) {
 		'd' => 'day',
 		'h' => 'hour',
 		'i' => 'minute',
-		's' => 'second',
 	);
 	foreach ($string as $k => &$v) {
 		if ($diff->$k) {
