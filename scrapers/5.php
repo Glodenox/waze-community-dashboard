@@ -183,7 +183,7 @@ class Scraper {
 
 			if (!array_key_exists($mte['mte'], $current_events)) {
 				// put up to 20 statements in an array so we can do a multi-insert
-				$stmt_buffer[] = array($startDateTime->format('U'), ($endDateTime != null ? $endDateTime->format('U') : null), $mte['lon'], $mte['lat'], trim(html_entity_decode($mte['name'])),
+				$stmt_buffer[] = array($startDateTime->format('U'), ($endDateTime != null ? $endDateTime->format('U') : $startDateTime->format('U')), $mte['lon'], $mte['lat'], trim(html_entity_decode($mte['name'])),
 						STATUS_REPORTED, PRIORITY_HIGH, SCRAPER_ID, $mte['mte'], json_encode($external_data), json_encode($geojson), $lastUpdate->format('c'));
 				$stats[STATUS_REPORTED]++;
 				if (count($stmt_buffer) >= 20) {
