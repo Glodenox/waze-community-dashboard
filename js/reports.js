@@ -1008,30 +1008,30 @@ Dashboard.ReportView.prototype.refresh = function() {
 window.addEventListener('load', function() {
 	// Initialize filters
 	var statusFilter = document.querySelector('#reportStatusFilter');
-	if (!localStorage.statusFilter) {
+	if (localStorage.statusFilter == null) {
 		localStorage.statusFilter = 'actionable';
 	}
 	statusFilter.value = localStorage.statusFilter;
 	var sourceFilter = document.querySelector('#sourceFilter');
-	if (!localStorage.sourceFilter) {
+	if (localStorage.sourceFilter == null) {
 		localStorage.sourceFilter = sourceFilter.value;
 	}
 	sourceFilter.value = localStorage.sourceFilter;
 	var priorityFilter = document.querySelector('#priorityFilter');
-	if (!localStorage.priorityFilter) {
+	if (localStorage.priorityFilter == null) {
 		localStorage.priorityFilter = priorityFilter.value;
 	}
 	priorityFilter.value = localStorage.priorityFilter;
 	var editorLevelFilter = document.querySelector('#editorLevelFilter');
-	if (!localStorage.editorLevelFilter) {
+	if (localStorage.editorLevelFilter == null) {
 		localStorage.editorLevelFilter = editorLevelFilter.value;
 	}
 	editorLevelFilter.value = localStorage.editorLevelFilter;
-	if (!localStorage.periodFilter) {
+	if (localStorage.periodFilter == null) {
 		localStorage.periodFilter = 'soon';
 	}
 	periodFilter.value = localStorage.periodFilter;
-	if (!localStorage.reportsFilterArea) {
+	if (localStorage.reportsFilterArea == null) {
 		localStorage.reportsFilterArea = JSON.stringify(datasetBounds);
 	}
 	var bounds = JSON.parse(localStorage.reportsFilterArea);
