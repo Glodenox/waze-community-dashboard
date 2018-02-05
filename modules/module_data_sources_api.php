@@ -24,6 +24,11 @@ switch($folders[2]) {
 		$stmt = $db->prepare("SELECT state FROM dashboard_sources WHERE id = $source_id FOR UPDATE");
 		execute($stmt, array());
 		$state = $stmt->fetchColumn();
+		// Force unlock if still running after an hour
+		if ($state == 'running' && $source->last_update < time() - $source->update_cooldown - 3600) {
+			$state = 'inactive';
+		}
+		// Otherwise fail if not set as inactive
 		if ($state != 'inactive') {
 			$db->commit();
 			json_fail('Process already running or in error');
@@ -39,6 +44,7 @@ switch($folders[2]) {
 		try {
 			$results = $scraper->update_source();
 		} catch(Exception $e) {
+			file_put_contents('logs/forum-scraper.err', $e->getMessage() + "\n", FILE_APPEND);
 			$results = array(
 				'errors' => $e->getMessage()
 			);
