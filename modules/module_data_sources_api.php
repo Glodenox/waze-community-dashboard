@@ -44,15 +44,14 @@ switch($folders[2]) {
 		try {
 			$results = $scraper->update_source();
 		} catch(Exception $e) {
-			file_put_contents('logs/forum-scraper.err', $e->getMessage() + "\n", FILE_APPEND);
+			file_put_contents('logs/forum-scraper.err', $e . "\n", FILE_APPEND);
 			$results = array(
-				'errors' => $e->getMessage()
+				'errors' => $e->__toString()
 			);
 		} finally {
 			$db->query("UPDATE dashboard_sources SET state = 'inactive' WHERE id = $source_id");
 		}
 		restore_error_handler();
-
 
 		// TODO: whitelist instead of blacklist here
 		unset($results['received']);
