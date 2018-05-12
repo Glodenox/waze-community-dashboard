@@ -17,8 +17,12 @@ if (is_numeric($folders[1]) && !$folders[2]) { // Display the individual source 
 			if ($source === false || count($source) == 0) {
 				$error = 'Could not find requested source';
 			} else {
-				$stmt = $db->query('SELECT round(lon, 1) as lon, round(lat, 1) as lat, count(id) as reports FROM dashboard_reports WHERE source = ' . $sourceId . ' GROUP BY 1, 2');
-				$heatmap = $stmt->fetchAll(PDO::FETCH_OBJ);
+				$stmt = $db->query('SELECT min(lon) as min_lon, max(lon) as max_lon, min(lat) as min_lat, max(lat) as max_lat FROM dashboard_reports WHERE source = ' . $sourceId);
+				$map_bounds = $stmt->fetch(PDO::FETCH_OBJ);
+				// The bounds default to 0 if no reports are available for this source
+				if ($map_bounds->min_lon == 0 && $map_bounds->min_lat == 0 && $map_bounds->max_lon == 0 && $map_bounds->max_lat == 0) {
+					$map_bounds = FALSE;
+				}
 				if ($source->data_type == 'Reports') {
 					$stmt = $db->query('SELECT status, count(id) as count FROM dashboard_reports WHERE source = ' . $sourceId . ' AND status <> 5 GROUP BY status');
 					$source_stats = $stmt->fetchAll(PDO::FETCH_OBJ);
@@ -30,7 +34,7 @@ if (is_numeric($folders[1]) && !$folders[2]) { // Display the individual source 
 			}
 		}
 	}
-	$page_title = $source->name . ' - Data Sources - ' . $page_title;
+	$page_title = (isset($error) ? $error : $source->name) . ' - Data Sources - ' . $page_title;
 	require('templates/template_data_source.php');
 } elseif ($folders[1] == '' || $folders[1] == 'index') { // Retrieve the overview of all sources
 	$stmt = $db->prepare("SELECT s.id, s.name, s.data_type, s.last_update, s.state, s.update_cooldown, IF(s.data_type = 'Support Topics', (SELECT count(t.id) FROM dashboard_support_topics t), (SELECT count(r.id) FROM dashboard_reports r WHERE r.source = s.id)) as items FROM dashboard_sources s");

@@ -74,6 +74,32 @@ switch($folders[2]) {
 			'result' => $results
 		));
 
+	case 'heatmap':
+		$source_id = (int)$folders[1];
+		if ($source_id <= 0) {
+			json_fail('No source ID or invalid source ID provided');
+		}
+		$filter = (array_key_exists('filter', $_GET) ? $_GET['filter'] : -1);
+		if ($filter === -1) {
+			json_fail('No heatmap filter specified');
+		}
+		$heatmap_filters = array(
+			'all' => '',
+			'open' => " AND status IN (1, 2, 4, 7)",
+			//'user' => '', TODO
+		);
+		foreach (STATUSES as $key => $name) {
+			$heatmap_filters[strtolower(str_replace('_', '-', $name))] = ' AND status = ' . $key;
+		}
+		if (!array_key_exists($filter, $heatmap_filters)) {
+			json_fail('No valid heatmap filter specified');
+		}
+		$stmt = $db->query('SELECT round(lon, 1) as lon, round(lat, 1) as lat, count(id) as reports FROM dashboard_reports WHERE source = ' . $source_id . $heatmap_filters[$filter] . ' GROUP BY 1, 2');
+		$data = $stmt->fetchAll(PDO::FETCH_OBJ);
+		json_send(array(
+			'result' => $data
+		));
+
 	default:
 		json_fail('Unknown action requested');
 }

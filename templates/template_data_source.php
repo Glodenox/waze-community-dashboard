@@ -11,7 +11,7 @@
 <?php } ?>
 					</h1>
 					<p><?=$source->description?></p>
-<?php if (count($heatmap) !== 0) { ?>
+<?php if (isset($map_bounds) && $map_bounds !== FALSE) { ?>
 					<div id="areaMap" style="height: 20vw;"></div>
 <?php } ?>
 					<div class="row">
@@ -49,45 +49,70 @@
 <?php } ?>
 					</div>
 				</div>
-<?php if (count($heatmap) !== 0) { ?>
+<?php if (isset($map_bounds) && $map_bounds !== FALSE) { ?>
 				<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDH7C24331Mc6DQJc7xf7gxMOb3Z69yZ-E&amp;libraries=visualization"></script>
 				<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 				<script type="text/javascript">
-var heatmap = <?=json_encode($heatmap, JSON_NUMERIC_CHECK)?>;
-var latAvg = createAverageObj();
-var lonAvg = createAverageObj();
-var heatmapData = [];
-heatmap.forEach(function(entry) {
-	heatmapData.push({location: new google.maps.LatLng(entry.lat, entry.lon), weight: entry.reports});
-	latAvg.add(entry.lat);
-	lonAvg.add(entry.lon);
-});
 var areaMap = new google.maps.Map(document.getElementById('areaMap'), {
-	center: { lat: latAvg.getAverage(), lng: lonAvg.getAverage() },
+	center: { lat: <?=($map_bounds->min_lat+$map_bounds->max_lat)/2?>, lng: <?=($map_bounds->min_lon+$map_bounds->max_lon)/2?> },
 	zoom: 6,
-	maxZoom: 6,
+	maxZoom: 7,
 	clickableIcons: false,
 	mapTypeControl: false,
 	streetViewControl: false
 });
-var heatmap = new google.maps.visualization.HeatmapLayer({
-	data: heatmapData
-});
+var heatmap = new google.maps.visualization.HeatmapLayer();
 heatmap.setMap(areaMap);
+updateHeatmap('all');
 
-function createAverageObj() {
-	var count = 0;
-	var sum = 0;
-	return {
-		'add': function(n) {
-			sum += n;
-			count++;
-		},
-		'getAverage': function() {
-			return sum / count;
-		}
-	};
+var dataSelectionContainer = document.createElement('div');
+dataSelectionContainer.style.color = 'rgb(25,25,25)';
+dataSelectionContainer.style.fontFamily = 'Roboto,Arial,sans-serif';
+dataSelectionContainer.style.margin = '10px';
+dataSelectionContainer.style.fontSize = '14px';
+dataSelectionContainer.style.backgroundColor = '#fff';
+dataSelectionContainer.style.border = '5px solid #fff';
+dataSelectionContainer.style.borderRadius = '4px';
+var dataSelectionLabel = document.createElement('label');
+var dataSelection = document.createElement('select');
+dataSelection.id = 'heatmap-filter';
+dataSelectionLabel.htmlFor = dataSelection.id;
+dataSelectionLabel.textContent = 'Heatmap:';
+dataSelectionLabel.style.paddingRight = '4px';
+dataSelectionLabel.style.margin = '0';
+dataSelectionContainer.appendChild(dataSelectionLabel);
+dataSelection.appendChild(new Option('All reports', 'all'));
+dataSelection.appendChild(new Option('Open reports', 'open'));
+<?php /*if (isset($user)) { ?>
+dataSelection.appendChild(new Option('My reports', 'user'));
+<?php }*/ ?>
+var selectionByType = document.createElement('optgroup');
+selectionByType.label = 'Filter by status';
+<?php foreach (STATUSES as $name) { ?>
+selectionByType.appendChild(new Option('<?=$name?>', '<?=strtolower(str_replace('_', '-', $name))?>'));
+<?php } ?>
+dataSelection.appendChild(selectionByType);
+dataSelection.addEventListener('change', () => updateHeatmap(dataSelection.value));
+dataSelectionContainer.appendChild(dataSelection);
+areaMap.controls[google.maps.ControlPosition.TOP_LEFT].push(dataSelectionContainer);
+
+function updateHeatmap(filter) {
+	fetch('<?=ROOT_FOLDER?>data-sources/<?=$sourceId?>/heatmap?filter=' + filter)
+		.then(response => response.json())
+		.then(response => {
+			if (response.ok) {
+				var heatmapData = [];
+				response.result.forEach(function(entry) {
+					heatmapData.push({location: new google.maps.LatLng(entry.lat, entry.lon), weight: entry.reports});
+				});
+				heatmap.setData(heatmapData);
+			} else {
+				alert(response.error);
+			}
+		})
+		.catch(error => console.error(error));
 }
+
 <?php if (isset($source_stats)) { ?>
 google.charts.load('current', {'packages':['corechart']});
 google.charts.setOnLoadCallback(function() {
