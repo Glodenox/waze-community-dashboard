@@ -22,7 +22,7 @@
 <?php }
 } ?>
 						<dl class="dl-horizontal col-md-6 col-sm-12" style="margin-top: 4em">
-							<dt>URL to documentation</dt>
+							<dt>URL to source</dt>
 							<dd><a href="<?=$source->url?>"><?=$source->url?></a></dd>
 							<dt>Data Type</dt>
 							<dd><?=$source->data_type?></dd>
