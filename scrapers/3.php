@@ -11,7 +11,7 @@ class Scraper {
 	function update_source() {
 		global $db, $code_errors;
 
-		$stmt = $db->prepare('SELECT id FROM dashboard_support_forums');
+		$stmt = $db->prepare('SELECT id, name, slack_team, slack_channels FROM dashboard_support_forums');
 		execute($stmt, array());
 		$forums = $stmt->fetchAll(PDO::FETCH_OBJ);
 
@@ -55,6 +55,21 @@ class Scraper {
 					$topic[3] = $forum_id;
 					$topic[4] = STATUS_REPORTED;
 				}, $forum->id);
+
+				if ($forum->slack_team != '') {
+					$text = array();
+					foreach ($new_topics as $new_topic) {
+						$text[] = 'New topic posted in ' . $forum->name . ': <https://www.waze.com/forum/viewtopic.php?f=' . $forum->id . '&t=' . $new_topic[0] . '|' . $new_topic[1] . '>.';
+					}
+					foreach (explode(',', $forum->slack_channels) as $slack_channel) {
+						send_notification(array(
+							"icon_emoji" => ":waze:",
+							"channel" => $slack_channel,
+							"text" => implode("\n", $text)
+						));
+					}
+				}
+
 				multi_insert('INSERT INTO dashboard_support_topics (id, title, timestamp, forum_id, status) VALUES (?,?,?,?,?)', $new_topics);
 				$results['new'] += count($new_topics);
 			}
