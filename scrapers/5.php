@@ -124,8 +124,20 @@ class Scraper {
 					$external_data['Creator'] = $mte['creator'];
 				}
 				// put up to 20 statements in an array so we can do a multi-insert
-				$stmt_buffer[] = array($startDateTime->format('U'), ($endDateTime != null ? $endDateTime->format('U') : $startDateTime->format('U')), $mte['lon'], $mte['lat'], trim(html_entity_decode($mte['name'])),
-						STATUS_REPORTED, PRIORITY_HIGH, SCRAPER_ID, $mte['mte'], json_encode($external_data), json_encode($geojson), $lastUpdate->format('c'));
+				$stmt_buffer[] = array(
+					$startDateTime->format('U'),
+					($endDateTime != null ? $endDateTime->format('U') : $startDateTime->format('U') + 86340), // Add 23:59:00 to start time so it spans practically the whole day
+					$mte['lon'],
+					$mte['lat'],
+					trim(html_entity_decode($mte['name'])),
+					STATUS_REPORTED,
+					PRIORITY_HIGH,
+					SCRAPER_ID,
+					$mte['mte'],
+					json_encode($external_data),
+					json_encode($geojson),
+					$lastUpdate->format('c')
+				);
 				$stats[STATUS_REPORTED]++;
 				$country = explode(', ', $mte['address']);
 				$country = end($country);
