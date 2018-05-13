@@ -106,7 +106,7 @@ class Scraper {
 			unset($cancelled_events[$mte['mte']]);
 			$dates = explode(' - ', strtolower($mte['date']));
 			$startDateTime = new DateTime($dates[0], new DateTimeZone('UTC'));
-			$endDateTime = (count($dates) > 1) ? new DateTime($dates[1], new DateTimeZone('UTC')) : null;
+			$endDateTime = (count($dates) > 1) ? new DateTime($dates[1] . 'T23:59:00', new DateTimeZone('UTC')) : null;
 			// As the first date is missing its year, the guessed year might be wrong
 			while ($endDateTime != null && $startDateTime > $endDateTime) {
 				$startDateTime->sub(new DateInterval('P1Y'));
