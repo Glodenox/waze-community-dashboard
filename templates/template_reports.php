@@ -165,15 +165,16 @@
 										<div class="col-xs-8 report-source"></div>
 									</div>
 								</div>
-								<div class="col-sm-6 col-xs-12">
+								<div class="col-sm-6 col-xs-12 notes">
 <?php if (isset($user)) { ?>
-									<div class="pull-right"><button class="btn btn-default" id="report-comments-edit-btn">Edit Comments</button></div>
+									<div class="pull-right"><button class="btn btn-default" id="report-notes-edit-btn">Edit Notes</button></div>
 <? } ?>
-									<div id="report-comments"></div>
-									<div id="report-comments-edit" class="hidden" style="height:100%">
-										<textarea id="report-comments-source" style="width:100%; height:calc(100% - 50px); resize:vertical"></textarea>
-										<button class="btn btn-default" id="report-set-comments">Update</button>
-										<button class="btn btn-default" id="report-comments-cancel">Cancel</button>
+									<div id="report-notes"></div>
+									<div id="report-notes-edit" class="hidden" style="height:100%">
+										<textarea id="report-notes-source" maxlength="1000" style="width:100%; height:calc(100% - 50px); resize:vertical"></textarea>
+										<button class="btn btn-default" id="report-set-notes">Update</button>
+										<button class="btn btn-default" id="report-notes-cancel">Cancel</button>
+										<span class="pull-right"><a href="https://en.wikipedia.org/wiki/Markdown" target="_blank">Markdown</a> text formatting supported</span>
 									</div>
 								</div>
 							</div>

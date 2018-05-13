@@ -16,9 +16,9 @@
 *  /set-status: change the status of a report
 *   - id: id of the report
 *   - status: status to be set for this report (if missing, message must be present)
-*  /set-comments: modify the comments for this event
+*  /set-notes: modify the notes for this event
 *   - id: id of the report
-*   - comments: new content to set for this report
+*   - notes: new content to set for this report
 *  /set-level: assign a report to an editor level
 *   - id: id of the report to assign
 *   - level: editor level to assign to the report (1 to 6, -1 for undefined)
@@ -103,7 +103,7 @@ switch($folders[1]) {
 		if ($report_id == 0) {
 			json_fail('No report ID or invalid report ID provided');
 		}
-		$stmt = $db->prepare('SELECT r.id, start_time, end_time, lon, lat, r.description, status, priority, required_editor_level, source, s.name AS source_name, geojson, external_identifier, external_data, last_modified FROM dashboard_reports r, dashboard_sources s WHERE r.id = :report_id AND s.id = r.source');
+		$stmt = $db->prepare('SELECT r.id, start_time, end_time, lon, lat, r.description, status, priority, required_editor_level, notes, source, s.name AS source_name, geojson, external_identifier, external_data, last_modified FROM dashboard_reports r, dashboard_sources s WHERE r.id = :report_id AND s.id = r.source');
 		execute($stmt, array(':report_id' => $report_id));
 		$report = $stmt->fetch(PDO::FETCH_ASSOC);
 		if (!$report) {
@@ -125,16 +125,8 @@ switch($folders[1]) {
 				// TODO: log these instances
 			}
 		}
-		$stmt = $db->prepare('SELECT FROM_UNIXTIME(d.timestamp) as timestamp, d.message, d.user_id, u.name as username, u.avatar
-							  FROM dashboard_report_comments d 
-							  LEFT JOIN dashboard_users u ON d.user_id = u.id 
-							  WHERE d.report_id = :report_id
-							  ORDER BY timestamp DESC
-							  LIMIT 1');
-		execute($stmt, array(':report_id' => $report_id));
-		$post = $stmt->fetch(PDO::FETCH_OBJ);
-		$report['comments'] = ($post === FALSE ? '' : Parsedown::instance()->text($post->message));
-		$report['comments_source'] = ($post === FALSE ? '' : $post->message);
+		$report['notes_source'] = ($report['notes'] === FALSE ? '' : $report['notes']);
+		$report['notes'] = ($report['notes'] === FALSE ? '' : Parsedown::instance()->text($report['notes']));
 		$stmt = $db->prepare('SELECT FROM_UNIXTIME(h.timestamp) as timestamp, h.action_id, h.value, h.user_id, u.name as username, h.details 
 							  FROM dashboard_report_history h 
 							  LEFT JOIN dashboard_users u ON h.user_id = u.id 
@@ -199,7 +191,7 @@ switch($folders[1]) {
 			'autojump' => $process_auto_jump ? true : false
 		));
 
-	case 'set_comments':
+	case 'set_notes':
 		$report_id = (int)$_GET['id'];
 		if ($report_id == 0) {
 			json_fail('No report ID or invalid report ID provided');
@@ -207,17 +199,17 @@ switch($folders[1]) {
 		if (!isset($user)) {
 			json_fail('User not logged in');
 		}
-		if (!isset($_GET['comments']) || trim($_GET['comments']) == '') {
-			json_fail('Comments is missing or empty');
+		if (!isset($_GET['notes']) || trim($_GET['notes']) == '') {
+			json_fail('Notes is missing or empty');
 		}
-		if (count($_GET['comments']) > 2000) {
-			json_fail('Comments too long (maximum 2000 characters)');
+		if (count($_GET['notes']) > 1000) {
+			json_fail('Notes too long (maximum 1000 characters)');
 		}
-		$stmt = $db->prepare('INSERT INTO dashboard_report_comments (report_id, user_id, message, timestamp) VALUES (?,?,?,?)');
-		execute($stmt, array($report_id, $user->id, $_GET['comments'], time()));
-		$user_following = handle_action($report_id, ACTION_MESSAGE, null, $_GET['comments']);
+		$stmt = $db->prepare('UPDATE dashboard_reports SET notes = ? WHERE id = ?');
+		execute($stmt, array($_GET['notes'], $report_id));
+		$user_following = handle_action($report_id, ACTION_MESSAGE, null, $_GET['notes']);
 		json_send(array(
-			'comments' => Parsedown::instance()->text($_GET['comments']),
+			'notes' => Parsedown::instance()->text($_GET['notes']),
 			'following' => $user_following
 		));
 
@@ -237,9 +229,13 @@ switch($folders[1]) {
 			':report_id' => $report_id,
 			':editor_level' => (int)$_GET['level']
 		));
+		$stmt = $db->prepare('SELECT process_auto_jump FROM dashboard_users WHERE id = :user_id');
+		execute($stmt, array(':user_id' => $user->id));
+		$process_auto_jump = $stmt->fetch(PDO::FETCH_OBJ)->process_auto_jump;
 		$user_following = handle_action($report_id, ACTION_SET_LEVEL, (int)$_GET['level'], (int)$_GET['level']);
 		json_send(array(
-			'following' => $user_following
+			'following' => $user_following,
+			'autojump' => $process_auto_jump ? true : false
 		));
 
 	case 'set_priority':

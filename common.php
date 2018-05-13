@@ -26,7 +26,7 @@ const ACTIONS = array(
 	ACTION_SET_LEVEL => 'Editor level changed',
 	ACTION_SET_PRIORITY => 'Priority changed',
 	ACTION_CANCEL => 'Marked as cancelled',
-	ACTION_MESSAGE => 'Modified the comments area'
+	ACTION_MESSAGE => 'Modified the report notes'
 );
 
 define('STATUS_REPORTED', 1);

@@ -116,31 +116,6 @@ var fragmentFactory = {
 		}
 		tr.appendChild(detailsTd);
 		return tr;
-	},
-	'ReportView/Discussion/Item': function(date, user, message, avatarSrc) {
-		var container = document.createElement('div');
-		container.className = 'clearfix list-group-item';
-		var avatar = document.createElement('img');
-		avatar.src = avatarSrc;
-		avatar.title = user;
-		avatar.dataset.placement = 'right';
-		avatar.dataset.toggle = 'tooltip';
-		$(avatar).tooltip();
-		container.appendChild(avatar);
-		var timestamp = document.createElement('i');
-		timestamp.className = 'fa fa-clock-o';
-		timestamp.style.float = 'left';
-		timestamp.style.marginLeft = '-8px';
-		timestamp.title = 'Posted on ' + date;
-		timestamp.dataset.placement = 'right';
-		timestamp.dataset.toggle = 'tooltip';
-		$(timestamp).tooltip();
-		container.appendChild(timestamp);
-		var messageContainer = document.createElement('div');
-		messageContainer.className = 'message-container';
-		messageContainer.innerHTML = message;
-		container.appendChild(messageContainer);
-		return container;
 	}
 };
 $.fn.tooltip.Constructor.DEFAULTS.trigger = 'hover';
@@ -597,35 +572,35 @@ Dashboard.ReportView = function(viewManager, container) {
 			return false;
 		});
 	}
-	var commentsEditBtn = document.getElementById('report-comments-edit-btn');
-	if (commentsEditBtn) {
-		commentsEditBtn.addEventListener('click', function() {
-			commentsEditBtn.classList.toggle('hidden');
-			commentsView.classList.toggle('hidden');
-			commentsEditor.classList.toggle('hidden');
+	var notesView = document.getElementById('report-notes');
+	var notesEditBtn = document.getElementById('report-notes-edit-btn');
+	if (notesEditBtn) {
+		notesEditBtn.addEventListener('click', function() {
+			notesEditBtn.classList.toggle('hidden');
+			notesView.classList.toggle('hidden');
+			notesEditor.classList.toggle('hidden');
 		});
 	}
-	var commentsView = document.getElementById('report-comments');
-	var commentsEditor = document.getElementById('report-comments-edit');
-	document.getElementById('report-set-comments').addEventListener('click', function() {
-	var statusId = Status.show('info', 'Setting new comments');
-		Dashboard.loadPage(baseUrl + '/set-comments', { id: location.hash.substring(1), comments: document.getElementById('report-comments-source').value }, function() {
+	var notesEditor = document.getElementById('report-notes-edit');
+	document.getElementById('report-set-notes').addEventListener('click', function() {
+	var statusId = Status.show('info', 'Setting new notes');
+		Dashboard.loadPage(baseUrl + '/set-notes', { id: location.hash.substring(1), notes: document.getElementById('report-notes-source').value }, function() {
 			if (this.response.ok) {
 				Status.hide(statusId);
-				commentsView.innerHTML = this.response.comments;
-				commentsEditBtn.classList.toggle('hidden');
-				commentsView.classList.toggle('hidden');
-				commentsEditor.classList.toggle('hidden');
+				notesView.innerHTML = this.response.notes;
+				notesEditBtn.classList.toggle('hidden');
+				notesView.classList.toggle('hidden');
+				notesEditor.classList.toggle('hidden');
 			} else {
 				Status.show('danger', this.response.error);
-				console.log('Sending comments failed', this.response.error);
+				console.log('Sending notes failed', this.response.error);
 			}
 		});
 	});
-	document.getElementById('report-comments-cancel').addEventListener('click', function() {
-		commentsEditBtn.classList.toggle('hidden');
-		commentsView.classList.toggle('hidden');
-		commentsEditor.classList.toggle('hidden');
+	document.getElementById('report-notes-cancel').addEventListener('click', function() {
+		notesEditBtn.classList.toggle('hidden');
+		notesView.classList.toggle('hidden');
+		notesEditor.classList.toggle('hidden');
 	});
 	var self = this;
 	document.querySelector('#feature-details button.close').addEventListener('click', function() {
@@ -996,11 +971,11 @@ Dashboard.ReportView.prototype.refresh = function() {
 		}
 		historyList.appendChild(fragmentFactory['ReportView/History/Item'](history.timestamp, history.username, description, history.details));
 	});
-	var comments = this.container.querySelector('#report-comments');
-	comments.removeAll();
-	comments.innerHTML = report.comments;
-	var commentsSource = this.container.querySelector('#report-comments-source');
-	commentsSource.value = report.comments_source;
+	var notes = this.container.querySelector('#report-notes');
+	notes.removeAll();
+	notes.innerHTML = report.notes;
+	var notesSource = this.container.querySelector('#report-notes-source');
+	notesSource.value = report.notes_source;
 	// Move last item into view
 	//discussionList.scrollTop = discussionList.scrollHeight;
 };

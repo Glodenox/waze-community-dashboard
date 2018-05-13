@@ -185,6 +185,27 @@ tr.clickable > td > a, tr.clickable > td > a:hover {
 	margin-bottom: 15px;
 }
 
+/* "Post-it" CSS from https://mentormate.com/blog/css-postit-note/ */
+#report-view .notes {
+	background: linear-gradient(135deg, #ffff88 81%,#ffff88 82%,#ffff88 82%,#ffffc6 100%);
+	border-bottom-right-radius: 60px 5px;
+	border: 1px solid #E8E8E8;
+	border-top: 30px solid #fdfd86;
+	position: relative;
+}
+#report-view .notes::after {
+	content: "";
+	position: absolute;
+	z-index: -1;
+	right: 0;
+	bottom: 20px;
+	width: 200px;
+	height: 25px;
+	background: rgba(0, 0, 0, 0.2);
+	box-shadow: 2px 15px 5px rgba(0, 0, 0, 0.40);
+	transform: matrix(-1, -0.1, 0, 1, 0, 0);
+}
+
 #externalData > dl > dd {
 	white-space: pre-line;
 	word-wrap: break-word;
