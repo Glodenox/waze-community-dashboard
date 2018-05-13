@@ -85,7 +85,7 @@ switch($folders[2]) {
 		}
 		$heatmap_filters = array(
 			'all' => '',
-			'open' => " AND status IN (1, 2, 4, 7)",
+			'open' => " AND status IN (1, 2, 3, 4, 7)",
 			//'user' => '', TODO
 		);
 		foreach (STATUSES as $key => $name) {
