@@ -12,9 +12,9 @@ define('REPORT_STATUS_UPDATE', 'UPDATE dashboard_reports SET status = ? WHERE id
 define('REPORT_FOLLOWERS', 'SELECT u.slack_user_id FROM dashboard_report_follow f, dashboard_users u WHERE f.report_id = ? AND f.user_id = u.id AND u.notify_bits & (1 << ?) <> 0');
 define('DATE_FORMAT', 'Y-m-d H:i:s');
 const COUNTRY_TO_CHANNEL = array(
-	'Belgium' => '#closures-be,#closures-be-fr',
-	'Netherlands' => '#closures-nederland',
-	'Luxembourg' => '#closures-lux'
+	'Belgium' => '#big-events-nl-be',
+	'Netherlands' => '#big-events-nl-be',
+	'Luxembourg' => '#big-events-nl-be'
 );
 
 class Scraper {
