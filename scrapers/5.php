@@ -205,7 +205,7 @@ class Scraper {
 			$channels = explode(',', COUNTRY_TO_CHANNEL[$country]);
 			$text = 'New unresolved major traffic event' . (count($mtes) > 1 ? 's' : '') . ' found:';
 			foreach ($mtes as $mte) {
-				$text .= "\n> <" . $mte['url'] . '|' . $mte['name'] . '> in _' . $mte['address'] . '_ (' . $mte['date'] . ') by ' . $mte['creator'];
+				$text .= "\n> <" . $mte['url'] . '|' . $mte['name'] . '> (' . $mte['date'] . ') in _' . $mte['address'] . '_ by ' . $mte['creator'];
 			}
 			foreach ($channels as $channel) {
 				send_notification(array(
