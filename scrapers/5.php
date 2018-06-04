@@ -148,7 +148,8 @@ class Scraper {
 					'url' => $external_data['WME URL'],
 					'creator' => (array_key_exists('Creator', $external_data) ? $external_data['Creator'] : 'Events page user'),
 					'address' => $mte['address'],
-					'name' => $mte['name']
+					'name' => $mte['name'],
+					'date' => $mte['date']
 				);
 				if (count($stmt_buffer) >= 20) {
 					$db->beginTransaction();
@@ -204,7 +205,7 @@ class Scraper {
 			$channels = explode(',', COUNTRY_TO_CHANNEL[$country]);
 			$text = 'New unresolved major traffic event' . (count($mtes) > 1 ? 's' : '') . ' found:';
 			foreach ($mtes as $mte) {
-				$text .= "\n<" . $mte['url'] . '|' . $mte['name'] . '> in _' . $mte['address'] . '_ by ' . $mte['creator'];
+				$text .= "\n> <" . $mte['url'] . '|' . $mte['name'] . '> in _' . $mte['address'] . '_ (' . $mte['date'] . ') by ' . $mte['creator'];
 			}
 			foreach ($channels as $channel) {
 				send_notification(array(
