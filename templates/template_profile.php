@@ -99,7 +99,7 @@ foreach ($notification_actions as $action_idx => $action) { ?>
 						</div>
 <?php } ?>
 					</div>
-					<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDH7C24331Mc6DQJc7xf7gxMOb3Z69yZ-E&amp;libraries=visualization"></script>
+					<script src="<?=ROOT_FOLDER?>js/OpenLayers.js"></script>
 					<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 					<script type="text/javascript">
 function loadPage(url, params, callback) {
@@ -123,45 +123,64 @@ document.getElementById('resync').addEventListener('click', function() {
 		}
 	});
 });
-var managementArea = {
-	north: <?=$management_area->north?>,
-	south: <?=$management_area->south?>,
-	west: <?=$management_area->west?>,
-	east: <?=$management_area->east?>
-};
+var mapProjection = 'EPSG:900913';
+var siteProjection = 'CRS:84';
+var bounds = new OpenLayers.Bounds(<?=$management_area->west?>, <?=$management_area->south?>, <?=$management_area->east?>,<?=$management_area->north?>).transform(siteProjection, mapProjection);
 // Management area
-var center = { lat: (managementArea.north + managementArea.south) / 2, lng: (managementArea.west + managementArea.east) / 2 };
-var areaMap = new google.maps.Map(document.getElementById('areaMap'), {
-	center: center,
-	zoom: 7,
-	clickableIcons: false,
-	mapTypeControl: false,
-	streetViewControl: false
+var areaMap = new OpenLayers.Map({
+	div: 'areaMap',
+	center: bounds.getCenterLonLat(),
+	layers: [
+		new OpenLayers.Layer.XYZ('Waze Livemap', [
+			'https://worldtiles1.waze.com/tiles/${z}/${x}/${y}.png',
+			'https://worldtiles2.waze.com/tiles/${z}/${x}/${y}.png',
+			'https://worldtiles3.waze.com/tiles/${z}/${x}/${y}.png',
+			'https://worldtiles4.waze.com/tiles/${z}/${x}/${y}.png'
+		], {
+			projection: mapProjection,
+			attribution: '&copy; 2006-' + (new Date()).getFullYear() + ' <a href="https://www.waze.com/livemap" target="_blank">Waze Mobile</a>. All Rights Reserved.'
+		})
+	],
+	zoom: 7
 });
-var areaBounds = new google.maps.Rectangle({
-	bounds: managementArea,
-	map: areaMap,
-	editable: true,
-	draggable: true,
-	zIndex: 10
-});
-areaMap.fitBounds(managementArea);
-var dragging = false;
-areaBounds.addListener('drag', function() {
-	dragging = true;
-});
-areaBounds.addListener('dragend', function() {
-	dragging = false;
-	saveManagementArea();
-});
-areaBounds.addListener('bounds_changed', function() {
-	if (!dragging) {
-		saveManagementArea();
+areaMap.zoomToExtent(bounds);
+OpenLayers.Feature.Vector.style['default'].strokeWidth = 2;
+OpenLayers.Feature.Vector.style['default'].fillColor = '#ffffff';
+OpenLayers.Feature.Vector.style['default'].strokeColor = '#428bca';
+OpenLayers.Feature.Vector.style['default'].fillOpacity = 1;
+OpenLayers.Feature.Vector.style['default'].cursor = 'pointer';
+
+var vectors = new OpenLayers.Layer.Vector('Vector Layer', {
+	eventListeners: {
+		'featuremodified': e => saveManagementArea(e.feature.geometry.getBounds().clone().transform(mapProjection, siteProjection))
 	}
 });
-function saveManagementArea() {
+areaMap.addLayer(vectors);
+var managementArea = new OpenLayers.Feature.Vector(bounds.toGeometry(), {}, {
+	strokeColor: '#428bca',
+	fillColor: '#428bca',
+	fillOpacity: 0.3
+});
+vectors.addFeatures([ managementArea ]);
+var modifyControl = new OpenLayers.Control.ModifyFeature(vectors, {
+	mode: OpenLayers.Control.ModifyFeature.RESIZE | OpenLayers.Control.ModifyFeature.RESHAPE | OpenLayers.Control.ModifyFeature.DRAG,
+	createVertices: false,
+	standalone: true,
+	toggle: false,
+	clickout: false
+});
+areaMap.addControl(modifyControl);
+modifyControl.activate();
+modifyControl.selectFeature(managementArea);
+
+function saveManagementArea(bounds) {
 	var statusId = Status.show('info', 'Saving management area');
-	loadPage('<?=ROOT_FOLDER?>profile/change-area', areaBounds.bounds.toJSON(), function() {
+	loadPage('<?=ROOT_FOLDER?>profile/change-area', {
+		north: bounds.top,
+		east: bounds.right,
+		south: bounds.bottom,
+		west: bounds.left
+	}, function() {
 		Status.hide(statusId);
 		if (this.response.ok) {
 			Status.show('success', 'Management area saved', 4000);
@@ -171,23 +190,6 @@ function saveManagementArea() {
 		}
 	});
 }
-google.maps.event.addDomListener(window, "resize", function() {
-	var center = areaMap.getCenter();
-	google.maps.event.trigger(areaMap, "resize");
-	areaMap.setCenter(center); 
-});
-// Heatmap in management area map
-loadPage('<?=ROOT_FOLDER?>reports/heatmap', {}, function() {
-	var heatmapData = [];
-	this.response.heatmap.forEach(function(entry) {
-		heatmapData.push({location: new google.maps.LatLng(entry.lat, entry.lon), weight: entry.reports});
-	});
-	var heatmap = new google.maps.visualization.HeatmapLayer({
-		data: heatmapData,
-		maxIntensity: 10
-	});
-	heatmap.setMap(areaMap);
-});
 // Statistics
 google.charts.load('current', {'packages':['corechart']});
 google.charts.setOnLoadCallback(function() {
