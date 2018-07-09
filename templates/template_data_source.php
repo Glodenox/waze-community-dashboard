@@ -12,7 +12,21 @@
 					</h1>
 					<p><?=$source->description?></p>
 <?php if (isset($map_bounds) && $map_bounds !== FALSE) { ?>
-					<div id="areaMap" style="height: 20vw;"></div>
+					<div id="areaMap" style="height:20vw; position:relative">
+						<div unselectable="on" class="olControlNoSelect" style="position:absolute; top:10px; z-index:2000; text-align:center; left:0; right:0;" id="heatmap-message">
+							<span style="background-color:#fff; padding:3px; color:#777"><i class="fa fa-spinner fa-pulse"></i> Heatmap loading...</span>
+						</div>
+						<div unselectable="on" class="olControlNoSelect" style="position:absolute; bottom:10px; left:10px; z-index: 2000">
+							<label style="background-color:#fff; padding:3px; color:#777">
+								Heatmap:
+								<select id="heatmap-filter">
+									<option value="all">All reports</option>
+									<option value="open">Open reports</option>
+									<optgroup label="Filter by status" id="heatmap-filter-statuses"></optgroup>
+								</select>
+							</label>
+						</div>
+					</div>
 <?php } ?>
 					<div class="row">
 <? if (isset($source_stats) && count($source_stats !== 0)) { ?>
@@ -50,62 +64,61 @@
 					</div>
 				</div>
 <?php if (isset($map_bounds) && $map_bounds !== FALSE) { ?>
-				<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDH7C24331Mc6DQJc7xf7gxMOb3Z69yZ-E&amp;libraries=visualization"></script>
+				<script src="<?=ROOT_FOLDER?>js/OpenLayers.js"></script>
+				<script src="<?=ROOT_FOLDER?>js/heatmap.js"></script>
+				<script src="<?=ROOT_FOLDER?>js/heatmap-openlayers-renderer.js"></script>
 				<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 				<script type="text/javascript">
-var areaMap = new google.maps.Map(document.getElementById('areaMap'), {
-	center: { lat: <?=($map_bounds->min_lat+$map_bounds->max_lat)/2?>, lng: <?=($map_bounds->min_lon+$map_bounds->max_lon)/2?> },
-	zoom: 6,
-	maxZoom: 7,
-	clickableIcons: false,
-	mapTypeControl: false,
-	streetViewControl: false
+var mapProjection = 'EPSG:900913';
+var siteProjection = 'CRS:84';
+var areaMap = new OpenLayers.Map({
+	div: 'areaMap',
+	center: (new OpenLayers.LonLat(<?=($map_bounds->min_lon+$map_bounds->max_lon)/2?>, <?=($map_bounds->min_lat+$map_bounds->max_lat)/2?>)).transform(siteProjection, mapProjection),
+	layers: [
+		new OpenLayers.Layer.XYZ('Waze Livemap', [
+			'https://worldtiles1.waze.com/tiles/${z}/${x}/${y}.png',
+			'https://worldtiles2.waze.com/tiles/${z}/${x}/${y}.png',
+			'https://worldtiles3.waze.com/tiles/${z}/${x}/${y}.png',
+			'https://worldtiles4.waze.com/tiles/${z}/${x}/${y}.png'
+		], {
+			projection: mapProjection,
+			attribution: '&copy; 2006-' + (new Date()).getFullYear() + ' <a href="https://www.waze.com/livemap" target="_blank">Waze Mobile</a>. All Rights Reserved.'
+		})
+	],
+	zoom: 7
 });
-var heatmap = new google.maps.visualization.HeatmapLayer();
-heatmap.setMap(areaMap);
+
+var heatmap = new OpenLayers.Layer.Vector('Heatmap', {
+	opacity: 0.7,
+	renderers: [ 'Heatmap' ],
+	rendererOptions: {
+		weight: 'count',
+		heatmapConfig: { radius: 15 }
+	}
+});
+areaMap.addLayer(heatmap);
+
 updateHeatmap('all');
 
-var dataSelectionContainer = document.createElement('div');
-dataSelectionContainer.style.color = 'rgb(25,25,25)';
-dataSelectionContainer.style.fontFamily = 'Roboto,Arial,sans-serif';
-dataSelectionContainer.style.margin = '10px';
-dataSelectionContainer.style.fontSize = '14px';
-dataSelectionContainer.style.backgroundColor = '#fff';
-dataSelectionContainer.style.border = '5px solid #fff';
-dataSelectionContainer.style.borderRadius = '4px';
-var dataSelectionLabel = document.createElement('label');
-var dataSelection = document.createElement('select');
-dataSelection.id = 'heatmap-filter';
-dataSelectionLabel.htmlFor = dataSelection.id;
-dataSelectionLabel.textContent = 'Heatmap:';
-dataSelectionLabel.style.paddingRight = '4px';
-dataSelectionLabel.style.margin = '0';
-dataSelectionContainer.appendChild(dataSelectionLabel);
-dataSelection.appendChild(new Option('All reports', 'all'));
-dataSelection.appendChild(new Option('Open reports', 'open'));
-<?php /*if (isset($user)) { ?>
-dataSelection.appendChild(new Option('My reports', 'user'));
-<?php }*/ ?>
-var selectionByType = document.createElement('optgroup');
-selectionByType.label = 'Filter by status';
 <?php foreach (STATUSES as $name) { ?>
-selectionByType.appendChild(new Option('<?=$name?>', '<?=strtolower(str_replace('_', '-', $name))?>'));
+document.getElementById('heatmap-filter-statuses').appendChild(new Option('<?=$name?>', '<?=strtolower(str_replace('_', '-', $name))?>'));
 <?php } ?>
-dataSelection.appendChild(selectionByType);
-dataSelection.addEventListener('change', () => updateHeatmap(dataSelection.value));
-dataSelectionContainer.appendChild(dataSelection);
-areaMap.controls[google.maps.ControlPosition.TOP_LEFT].push(dataSelectionContainer);
+document.getElementById('heatmap-filter').addEventListener('change', (e) => updateHeatmap(e.target.value));
 
 function updateHeatmap(filter) {
+	document.getElementById('heatmap-message').style.display = 'block';
 	fetch('<?=ROOT_FOLDER?>data-sources/<?=$sourceId?>/heatmap?filter=' + filter)
 		.then(response => response.json())
 		.then(response => {
 			if (response.ok) {
 				var heatmapData = [];
 				response.result.forEach(function(entry) {
-					heatmapData.push({location: new google.maps.LatLng(entry.lat, entry.lon), weight: entry.reports});
+					var point = new OpenLayers.Geometry.Point(entry.lon, entry.lat).transform(siteProjection, mapProjection);
+					heatmapData.push(new OpenLayers.Feature.Vector(point, { count: entry.reports}));
 				});
-				heatmap.setData(heatmapData);
+				heatmap.removeAllFeatures();
+				heatmap.addFeatures(heatmapData);
+				document.getElementById('heatmap-message').style.display = 'none';
 			} else {
 				alert(response.error);
 			}
