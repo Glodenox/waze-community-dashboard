@@ -7,7 +7,11 @@
 						<p><button class="btn btn-primary" id="resync">Resync profile data with Slack</button> <a href="<?=ROOT_FOLDER?>profile/logout" class="btn btn-danger">Log out</a></p>
 						<h3>Claimed Management Area</h3>
 						<p>The area defined below will be used to decide which reports are of importance to you. Any reports located outside of this area will not count towards the counters in the sidebar.</p>
-						<div id="areaMap" style="height: 20vw;"></div>
+						<div id="areaMap" style="height:20vw; position:relative">
+							<div unselectable="on" class="olControlNoSelect" style="position: absolute;top: 10px;z-index: 2000;text-align: center;left: 0;right: 0;" id="heatmap-message">
+								<span style="background-color: #fff;padding: 3px;border: 2px solid #337ab7;color: #777;">Heatmap loading...</span>
+							</div>
+						</div>
 						<h3>Data retrieved from Slack</h3>
 						<dl class="dl-horizontal">
 							<dt>Name</dt>
@@ -100,6 +104,8 @@ foreach ($notification_actions as $action_idx => $action) { ?>
 <?php } ?>
 					</div>
 					<script src="<?=ROOT_FOLDER?>js/OpenLayers.js"></script>
+					<script src="<?=ROOT_FOLDER?>js/heatmap.js"></script>
+					<script src="<?=ROOT_FOLDER?>js/heatmap-openlayers-renderer.js"></script>
 					<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 					<script type="text/javascript">
 function loadPage(url, params, callback) {
@@ -190,6 +196,26 @@ function saveManagementArea(bounds) {
 		}
 	});
 }
+var heatmap = new OpenLayers.Layer.Vector('Heatmap', {
+	opacity: 0.7,
+	renderers: [ 'Heatmap' ],
+	rendererOptions: {
+		weight: 'count',
+		heatmapConfig: { radius: 15 }
+	}
+});
+areaMap.addLayer(heatmap);
+areaMap.raiseLayer(heatmap, -1);
+// Heatmap in management area map
+loadPage('<?=ROOT_FOLDER?>reports/heatmap', {}, function() {
+	var heatmapData = [];
+	this.response.heatmap.forEach(function(entry) {
+		var point = new OpenLayers.Geometry.Point(entry.lon, entry.lat).transform(siteProjection, mapProjection)
+		heatmapData.push(new OpenLayers.Feature.Vector(point, { count: entry.reports}));
+	});
+	heatmap.addFeatures(heatmapData);
+	document.getElementById('heatmap-message').style.display = 'none';
+});
 // Statistics
 google.charts.load('current', {'packages':['corechart']});
 google.charts.setOnLoadCallback(function() {
@@ -209,7 +235,6 @@ if (count($action_stats) > 0) {
 	var chart = new google.visualization.PieChart(document.getElementById('actionChart'));
 	chart.draw(actions, options);
 	window.addEventListener('resize', function() {
-		console.log('resized');
 		chart.draw(actions, options);
 	});
 });
