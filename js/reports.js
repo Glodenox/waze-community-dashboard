@@ -119,6 +119,8 @@ var fragmentFactory = {
 	}
 };
 $.fn.tooltip.Constructor.DEFAULTS.trigger = 'hover';
+var mapProjection = 'EPSG:900913';
+var siteProjection = 'CRS:84';
 
 Dashboard = {}; // global namespace
 Dashboard.loadPage = function(url, params, callback) {
@@ -369,20 +371,7 @@ Dashboard.ReportList.prototype.update = function() {
 Dashboard.ReportView = function(viewManager, container) {
 	Dashboard.View.call(this, viewManager, 'report', container);
 	var reportView = this;
-	this._wazeMap = container.querySelector('#liveMap');
 	this._reportMap;
-	this._loadedLocation = (function() { // Object to store and compare currently loaded map coordinates
-		var lat = lon = 0;
-		return {
-			set: function(latarg, lonarg) {
-				lat = latarg;
-				lon = lonarg;
-			},
-			equals: function(latarg, lonarg) {
-				return lat == latarg && lon == lonarg;
-			}
-		};
-	})();
 	document.querySelector('#returnToList').addEventListener('click', function() {
 		if (history.pushState) {
 			history.pushState({ 'page': 0, 'view': 'list' }, null, 'reports');
@@ -603,10 +592,6 @@ Dashboard.ReportView = function(viewManager, container) {
 		notesEditor.classList.toggle('hidden');
 	});
 	var self = this;
-	document.querySelector('#feature-details button.close').addEventListener('click', function() {
-		document.getElementById('feature-details').classList.add('hidden');
-		self._reportMap.data.revertStyle();
-	});
 };
 Dashboard.ReportView.prototype = Object.create(Dashboard.View.prototype);
 Dashboard.ReportView.prototype.activate = function(forceUpdate) {
@@ -836,10 +821,10 @@ Dashboard.ReportView.prototype.refresh = function() {
 	}
 	var center = null;
 	if (report.geojson) {
-		var bounds = new google.maps.LatLngBounds();
+		var bounds = new OpenLayers.Bounds();
 		var dfs = function(node) {
 			if (node.length == 2 && !Array.isArray(node[0])) {
-				bounds.extend({lat: node[1], lng: node[0]});
+				bounds.extend(new OpenLayers.LonLat(node[0], node[1]));
 			} else {
 				node.forEach(function(child) {
 					dfs(child);
@@ -859,105 +844,213 @@ Dashboard.ReportView.prototype.refresh = function() {
 				dfs(feature.geometry.coordinates)
 			});
 		}
-		var center = bounds.getCenter();
+		var center = bounds.getCenterLonLat();
 		// Require at least a certain viewport
-		bounds.extend({ lat: center.lat() - 0.002, lng: center.lng() - 0.002 });
-		bounds.extend({ lat: center.lat() + 0.002, lng: center.lng() + 0.002 });
+		bounds.extend(new OpenLayers.LonLat(center.lon - 0.002, center.lat - 0.002));
+		bounds.extend(new OpenLayers.LonLat(center.lon + 0.002, center.lat + 0.002));
+		center.transform(siteProjection, mapProjection);
+		bounds.transform(siteProjection, mapProjection);
 	}
 	if (!center) {
-		center = new google.maps.LatLng(report.lat, report.lon);
+		center = new OpenLayers.LonLat(report.lon, report.lat).transform(siteProjection, mapProjection);
 	}
-	if (!this._loadedLocation.equals(center.lat, center.lng)) {
-		this._loadedLocation.set(center.lat, center.lng);
-		this._wazeMap.contentWindow.location.replace('https://embed.waze.com/en/iframe?lon=' + center.lng() + '&lat=' + center.lat() + '&zoom=16');
+	if (this._reportMap) {
+		this._reportMap.destroy();
 	}
-	this._reportMap = new google.maps.Map(this.container.querySelector('#reportMap'), {
-		zoom: 16,
-		clickableIcons: false,
-		mapTypeControl: false,
-		streetViewControl: false,
-		center: center
+	this._reportMap = new OpenLayers.Map({
+		div: 'reportMap',
+		center: center,
+		layers: [
+			new OpenLayers.Layer.XYZ('Waze Livemap', [
+				'https://worldtiles1.waze.com/tiles/${z}/${x}/${y}.png',
+				'https://worldtiles2.waze.com/tiles/${z}/${x}/${y}.png',
+				'https://worldtiles3.waze.com/tiles/${z}/${x}/${y}.png',
+				'https://worldtiles4.waze.com/tiles/${z}/${x}/${y}.png'
+			], {
+				projection: mapProjection,
+				numZoomLevels: 18,
+				attribution: '&copy; 2006-' + (new Date()).getFullYear() + ' <a href="https://www.waze.com/livemap" target="_blank">Waze Mobile</a>. All Rights Reserved.'
+			})
+		],
+		zoom: 16
 	});
-	google.maps.event.addDomListener(window, "resize", function() {
-		var center = self._reportMap.getCenter();
-		google.maps.event.trigger(self._reportMap, "resize");
-		self._reportMap.setCenter(center); 
-	});
-	if (report.geojson) {
-		this._reportMap.fitBounds(bounds);
-		var feature;
-		if (report.geojson.type != 'Feature' && report.geojson.type != 'FeatureCollection') {
-			feature = {
-				type: 'Feature',
-				geometry: report.geojson
-			};
-		} else {
-			feature = report.geojson;
-		}
-		this._reportMap.data.setStyle((function() {
-			var greens = 0;
-			var reds = 0;
-			return function(feature) {
-				if (!feature.getProperty || !feature.getProperty('style')) {
-					return { 'clickable': false };
-				}
-				if (feature.getProperty('style') == 'ADDED') {
-					greens = (greens == 5 ? 0 : greens + 1);
-					return {
-						strokeColor: '#00' + (155+greens*20).toString(16) + '00',
-						zIndex: 100,
-						strokeWeight: 6
-					};
-				}
-				if (feature.getProperty('style') == 'DELETED') {
-					reds = (reds == 5 ? 0 : reds + 1);
-					return {
-						strokeColor: '#' + (155+reds*20).toString(16) + '0000',
-						zIndex: 90,
-						strokeWeight: 18
-					};
-				}
-				return { 'clickable': false };
-			}
-		})());
-		this._reportMap.addListener('click', function() {
+	var vectors = new OpenLayers.Layer.Vector('Vector Layer');
+	this._reportMap.addControl(new OpenLayers.Control.SelectFeature(vectors, {hover: true, highlightOnly: true, renderIntent: 'hover', autoActivate: true}));
+	var redrawPropertiesWindow = function() {
+		var detailsTable = detailsPanel.querySelector('tbody');
+		detailsTable.removeAll();
+		if (vectors.selectedFeatures.length == 0) {
 			detailsPanel.classList.add('hidden');
-			self._reportMap.data.revertStyle();
-		});
-		this._reportMap.data.addListener('click', function(event) {
-			if (!event.feature) {
-				return;
-			}
-			self._reportMap.data.revertStyle();
-			self._reportMap.data.overrideStyle(event.feature, {
-				strokeColor: 'yellow',
-				zIndex: event.feature.getProperty('style') == 'ADDED' ? 105 : 95
-			});
-
-			var detailsTable = detailsPanel.querySelector('tbody');
-			detailsTable.removeAll();
-			event.feature.forEachProperty(function(value, name) {
-				var row = document.createElement('tr');
-				var propertyName = document.createElement('th');
-				propertyName.appendChild(document.createTextNode(name));
-				row.appendChild(propertyName);
+		}
+		var rows = new Map();
+		var currentCount = 1;
+		vectors.selectedFeatures.forEach(feature => {
+			currentCount++;
+			Object.entries(feature.attributes).forEach(([name, value]) => {
+				if (!rows.has(name)) {
+					var row = document.createElement('tr');
+					var propertyName = document.createElement('th');
+					propertyName.textContent = name;
+					row.appendChild(propertyName);
+					while (row.childNodes.length + 1 < currentCount) {
+						row.appendChild(document.createElement('td'));
+					}
+					rows.set(name, row);
+				}
 				var propertyValue = document.createElement('td');
-				propertyValue.appendChild(document.createTextNode(value));
-				row.appendChild(propertyValue);
-				detailsTable.appendChild(row);
+				propertyValue.textContent = String(value).replace(/(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}):\d{2}\.\d{3}\+\d{4}/, '$1 $2');
+				rows.get(name).appendChild(propertyValue);
 			});
-			detailsPanel.classList.remove('hidden');
-			detailsPanel.scrollIntoView(false);
+			rows.forEach((row, name) => {
+				if (row.childNodes.length < currentCount) {
+					row.appendChild(document.createElement('td'));
+				}
+			});
 		});
-		this._reportMap.data.addGeoJson(feature);
-	} else {
-		this._reportMap.data.addGeoJson({
-			type: 'Feature',
-			geometry: {
-				type: 'Point',
-				coordinates: [report.lon, report.lat]
+		rows.forEach((row, name) => {
+			var cols = Array.from(row.childNodes); // .forEach is still a bit too recently added to NodeListµ
+			var firstValue = row.childNodes[1].textContent;
+			cols.forEach((col, index) => {
+				if (index == 0) {
+					return;
+				}
+				if (col.textContent != firstValue) {
+					var mark = document.createElement('mark');
+					mark.textContent = col.textContent;
+					col.textContent = '';
+					col.appendChild(mark);
+				}
+			});
+			detailsTable.appendChild(row);
+		});
+		detailsPanel.classList.remove('hidden');
+	}
+	this._reportMap.addControl(new OpenLayers.Control.SelectFeature(vectors, {
+		autoActivate: true,
+		multiple: true,
+		toggle: true,
+		geometryTypes: ['OpenLayers.Geometry.MultiLineString', 'OpenLayers.Geometry.LineString'],
+		onSelect: redrawPropertiesWindow,
+		onUnselect: redrawPropertiesWindow
+	}));
+	this._reportMap.addLayer(vectors);
+	vectors.styleMap.styles.hover = vectors.styleMap.styles.default.clone();
+	vectors.styleMap.styles.hover.addRules([
+		new OpenLayers.Rule({
+			filter: new OpenLayers.Filter.Comparison({
+				type: OpenLayers.Filter.Comparison.EQUAL_TO,
+				property: 'style',
+				value: 'ADDED'
+			}),
+			symbolizer: {
+				strokeColor: '#00ff00',
+				strokeWidth: 6,
+				strokeOpacity: 0.8
 			}
-		});
+		}),
+		new OpenLayers.Rule({
+			filter: new OpenLayers.Filter.Comparison({
+				type: OpenLayers.Filter.Comparison.EQUAL_TO,
+				property: 'style',
+				value: 'DELETED'
+			}),
+			symbolizer: {
+				strokeColor: '#ff0000',
+				strokeWidth: 16,
+				strokeOpacity: 0.8
+			}
+		}),
+		new OpenLayers.Rule({
+			elseFilter: true,
+			symbolizer: {
+				strokeWidth: 4,
+				fillColor: '#86cffe',
+				strokeColor: '#428bca',
+				fillOpacity: 1
+			}
+		})
+	]);
+	vectors.styleMap.styles.default.addRules([
+		new OpenLayers.Rule({
+			filter: new OpenLayers.Filter.Comparison({
+				type: OpenLayers.Filter.Comparison.EQUAL_TO,
+				property: 'style',
+				value: 'ADDED'
+			}),
+			symbolizer: {
+				strokeColor: '#00ff00',
+				strokeWidth: 6,
+				strokeOpacity: 0.3
+			}
+		}),
+		new OpenLayers.Rule({
+			filter: new OpenLayers.Filter.Comparison({
+				type: OpenLayers.Filter.Comparison.EQUAL_TO,
+				property: 'style',
+				value: 'DELETED'
+			}),
+			symbolizer: {
+				strokeColor: '#ff0000',
+				strokeWidth: 16,
+				strokeOpacity: 0.3
+			}
+		}),
+		new OpenLayers.Rule({
+			elseFilter: true,
+			symbolizer: {
+				strokeWidth: 4,
+				fillColor: '#86cffe',
+				strokeColor: '#428bca',
+				fillOpacity: 1
+			}
+		})
+	]);
+	vectors.styleMap.styles.select.addRules([
+		new OpenLayers.Rule({
+			filter: new OpenLayers.Filter.Comparison({
+				type: OpenLayers.Filter.Comparison.EQUAL_TO,
+				property: 'style',
+				value: 'ADDED'
+			}),
+			symbolizer: {
+				strokeColor: '#00ff00',
+				strokeWidth: 6,
+				strokeOpacity: 1
+			}
+		}),
+		new OpenLayers.Rule({
+			filter: new OpenLayers.Filter.Comparison({
+				type: OpenLayers.Filter.Comparison.EQUAL_TO,
+				property: 'style',
+				value: 'DELETED'
+			}),
+			symbolizer: {
+				strokeColor: '#ff0000',
+				strokeWidth: 16,
+				strokeOpacity: 1
+			}
+		}),
+		new OpenLayers.Rule({
+			elseFilter: true,
+			symbolizer: {
+				strokeWidth: 4,
+				fillColor: '#86cffe',
+				strokeColor: '#428bca',
+				fillOpacity: 1
+			}
+		})
+	]);
+	if (report.geojson) {
+		this._reportMap.zoomToExtent(bounds);
+		var geojsonFormatter = new OpenLayers.Format.GeoJSON();
+		var features = geojsonFormatter.read(report.geojson);
+		features.forEach(feature => feature.geometry.transform(siteProjection, mapProjection));
+		// Sort features so deleted lines are put underneath added lines
+		features.sort((a,b) => b.attributes.style.localeCompare(a.attributes.style));
+		vectors.addFeatures(features);
+		console.log(this._reportMap);
+	} else {
+		vectors.addFeature(new OpenLayers.Geometry.Point(center.lon, center.lat));
 	}
 
 	var historyList = this.container.querySelector('#report-history');
@@ -976,8 +1069,6 @@ Dashboard.ReportView.prototype.refresh = function() {
 	notes.innerHTML = report.notes;
 	var notesSource = this.container.querySelector('#report-notes-source');
 	notesSource.value = report.notes_source;
-	// Move last item into view
-	//discussionList.scrollTop = discussionList.scrollHeight;
 };
 
 window.addEventListener('load', function() {

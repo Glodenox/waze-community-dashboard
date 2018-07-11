@@ -144,6 +144,7 @@ var areaMap = new OpenLayers.Map({
 			'https://worldtiles4.waze.com/tiles/${z}/${x}/${y}.png'
 		], {
 			projection: mapProjection,
+			numZoomLevels: 18,
 			attribution: '&copy; 2006-' + (new Date()).getFullYear() + ' <a href="https://www.waze.com/livemap" target="_blank">Waze Mobile</a>. All Rights Reserved.'
 		})
 	],

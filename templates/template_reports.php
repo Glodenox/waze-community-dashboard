@@ -179,14 +179,12 @@
 								</div>
 							</div>
 							<div class="row">
-								<div class="col-sm-12 col-md-6">
-									<div id="reportMap" style="height:400px"></div>
+								<div class="col-sm-12 col-md-12">
+									<div class="panel panel-default hidden" style="top:0; right:0; bottom:0; position:absolute; z-index:2000; display:flex; max-width:40%; flex-direction:column; overflow-y:scroll;" id="feature-details">
+										<table class="table table-striped table-condensed"><tbody></tbody></table>
+									</div>
+									<div id="reportMap" style="height:400px; position:relative"></div>
 								</div>
-								<div class="col-sm-12 col-md-6"><div class="embed-responsive" style="height:400px"><iframe id="liveMap" class="embed-responsive-item"></iframe></div></div>
-							</div>
-							<div class="panel panel-default hidden" id="feature-details">
-								<div class="panel-heading">Selected item details<button type="button" class="close" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
-								<table class="table table-striped table-condensed"><tbody></tbody></table>
 							</div>
 							<h3>Additional Data</h3>
 							<div class="row">
@@ -229,5 +227,6 @@ var user = {
 <?php } ?>
 				</script>
 				<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDH7C24331Mc6DQJc7xf7gxMOb3Z69yZ-E&amp;libraries=visualization"></script>
+				<script src="<?=ROOT_FOLDER?>js/OpenLayers.js"></script>
 				<script src="<?=ROOT_FOLDER?>js/reports.js?<?=substr(md5(filectime('js/reports.js')), 0, 10)?>"></script>
 <?php include('templates/template_footer.php'); ?>
