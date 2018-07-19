@@ -180,7 +180,7 @@
 							</div>
 							<div class="row">
 								<div class="col-sm-12 col-md-12">
-									<div class="panel panel-default hidden" style="top:0; right:0; bottom:0; position:absolute; z-index:2000; display:flex; max-width:40%; flex-direction:column; overflow-y:scroll;" id="feature-details">
+									<div class="panel panel-default hidden" style="top:0; right:15px; bottom:0; position:absolute; z-index:2000; display:flex; max-width:40%; flex-direction:column; overflow-y:scroll;" id="feature-details">
 										<table class="table table-striped table-condensed"><tbody></tbody></table>
 									</div>
 									<div id="reportMap" style="height:400px; position:relative"></div>
