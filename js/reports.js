@@ -881,6 +881,7 @@ Dashboard.ReportView.prototype.refresh = function() {
 		detailsTable.removeAll();
 		if (vectors.selectedFeatures.length == 0) {
 			detailsPanel.classList.add('hidden');
+			return;
 		}
 		var rows = new Map();
 		var currentCount = 1;
