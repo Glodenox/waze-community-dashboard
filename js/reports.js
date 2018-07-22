@@ -279,11 +279,15 @@ Dashboard.ListView.prototype.activate = function() {
 			});
 		}
 	}
-	this.refresh();
+	this.refresh(true);
 };
 // Load the reports matching the current filter options in localStorage
-Dashboard.ListView.prototype.refresh = function() {
+Dashboard.ListView.prototype.refresh = function(flush) {
 	var self = this;
+	if (flush) {
+		this._loadedReports.length = 0;
+		this._loadedReportsBounds = null;
+	}
 	// Don't refresh if the map hasn't initialized yet
 	if (!self._filterMap) {
 		return;
@@ -365,9 +369,9 @@ Dashboard.ReportList.prototype.refresh = function(page) {
 	this._nextPage.classList.toggle('disabled', this.page == maximumPage || this.reports.length < this.reportsPerPage);
 	if (this.reports.length > 0) {
 		this._paginationContainer.querySelector('span').textContent = ((this.page * this.reportsPerPage) + 1) + '-' + Math.min((this.page * this.reportsPerPage) + this.reportsPerPage, this.reports.length) + ' of ' + this.reports.length;
-		this.showPage();
 	}
 	this._listContainer.querySelector('#no-reports').classList.toggle('hidden', this.reports.length > 0);
+	this.showPage();
 };
 Dashboard.ReportList.prototype.showPage = function() {
 	// Clear the page of reports
@@ -1167,28 +1171,28 @@ window.addEventListener('load', function() {
 
 	statusFilter.addEventListener('change', function(event) {
 		localStorage.statusFilter = statusFilter.value;
-		listView.refresh();
+		listView.refresh(true);
 	});
 	sourceFilter.addEventListener('change', function(event) {
 		localStorage.sourceFilter = sourceFilter.value;
-		listView.refresh();
+		listView.refresh(true);
 	});
 	priorityFilter.addEventListener('change', function(event) {
 		localStorage.priorityFilter = priorityFilter.value;
-		listView.refresh();
+		listView.refresh(true);
 	});
 	editorLevelFilter.addEventListener('change', function(event) {
 		localStorage.editorLevelFilter = editorLevelFilter.value;
-		listView.refresh();
+		listView.refresh(true);
 	});
 	periodFilter.addEventListener('change', function(event) {
 		localStorage.periodFilter = periodFilter.value;
-		listView.refresh();
+		listView.refresh(true);
 	});
 	if (followedFilter) {
 		followedFilter.addEventListener('change', function(event) {
 			localStorage.followedFilter = followedFilter.checked;
-			listView.refresh();
+			listView.refresh(true);
 		});
 	}
 	// Load the page, show the report detail page if a hash is present
