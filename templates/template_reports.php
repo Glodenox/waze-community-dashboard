@@ -60,10 +60,19 @@
 <?php } ?>
 								</form>
 							</div>
-							<div id="filterMap"></div>
+							<div id="filterMap">
+								<div class="managementReset hidden">
+									<a>Reset to management area</a>
+								</div>
+								<div class="title hidden"></div>
+							</div>
 						</div>
-						<nav class="text-center">
-							<ul id="pagination" class="pagination"></ul>
+						<nav class="text-right" id="pagination">
+							<span></span>
+							<div class="btn-group">
+								<button class="btn btn-default disabled"><i class="fa fa-chevron-left"></i></button>
+								<button class="btn btn-default disabled"><i class="fa fa-chevron-right"></i></button>
+							</div>
 						</nav>
 						<div class="table-responsive">
 							<table class="table table-striped table-hover table-condensed">
@@ -201,32 +210,21 @@
 						</div>
 					</div>
 				</div>
+				<script src="<?=ROOT_FOLDER?>js/OpenLayers.js"></script>
 				<script>
 var baseUrl = '<?=ROOT_FOLDER?>reports';
 var actions = <?php echo json_encode(ACTIONS) ?>;
 var actionDescriptions = [];
 actionDescriptions[<?=ACTION_SET_STATUS?>] = <?php echo json_encode(STATUSES) ?>;
 actionDescriptions[<?=ACTION_SET_PRIORITY?>] = <?php echo json_encode(PRIORITIES) ?>;
-var datasetBounds = {
-	north: <?=$map_data->max_lat?>,
-	south: <?=$map_data->min_lat?>,
-	west: <?=$map_data->min_lon?>,
-	east: <?=$map_data->max_lon?>
-};
+var datasetBounds = new OpenLayers.Bounds(<?=$map_data->min_lon?>, <?=$map_data->min_lat?>, <?=$map_data->max_lon?>, <?=$map_data->max_lat?>);
 <?php if (isset($user)) { ?>
-var managementArea = {
-	north: <?=$user->area_north?>,
-	south: <?=$user->area_south?>,
-	west: <?=$user->area_west?>,
-	east: <?=$user->area_east?>
-};
+var managementArea = new OpenLayers.Bounds(<?=$user->area_west?>, <?=$user->area_south?>, <?=$user->area_east?>, <?=$user->area_north?>);
 var user = {
 	username: "<?=addslashes($user->name)?>",
 	id: <?=$user->id?>
 }
 <?php } ?>
 				</script>
-				<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDH7C24331Mc6DQJc7xf7gxMOb3Z69yZ-E&amp;libraries=visualization"></script>
-				<script src="<?=ROOT_FOLDER?>js/OpenLayers.js"></script>
 				<script src="<?=ROOT_FOLDER?>js/reports.js?<?=substr(md5(filectime('js/reports.js')), 0, 10)?>"></script>
 <?php include('templates/template_footer.php'); ?>

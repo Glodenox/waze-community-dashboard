@@ -91,7 +91,7 @@ switch($folders[1]) {
 			$where_args[] = 'f.user_id = ' . $user->id . ' AND r.id = f.report_id';
 		}
 
-		$stmt = $db->prepare('SELECT r.id, r.start_time, r.end_time, r.lon, r.lat, r.description, r.priority, r.source, s.name AS source_name FROM dashboard_reports r, dashboard_sources s' . ($followed ? ', dashboard_report_follow f' : '') . ' WHERE ' . implode(' AND ', $where_args) . ' ORDER BY r.start_time LIMIT 300');
+		$stmt = $db->prepare('SELECT r.id, r.start_time, r.end_time, r.lon, r.lat, r.description, r.priority, r.source, s.name AS source_name FROM dashboard_reports r, dashboard_sources s' . ($followed ? ', dashboard_report_follow f' : '') . ' WHERE ' . implode(' AND ', $where_args) . ' ORDER BY r.start_time LIMIT 500');
 		execute($stmt, $where_params);
 		$reports = $stmt->fetchAll(PDO::FETCH_OBJ);
 		json_send(array(

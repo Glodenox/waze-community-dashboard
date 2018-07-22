@@ -4,6 +4,7 @@ var fragmentFactory = {
 		return function(id, priority, description, startTime, endTime, sourceName, reportClick) {
 			var row = document.createElement('tr');
 			row.className = 'clickable';
+			row.id = 'report-row-' + id;
 			var priorityCol = document.createElement('td');
 			priorityCol.className = 'text-center';
 			var priorityLink = document.createElement('a');
@@ -64,33 +65,6 @@ var fragmentFactory = {
 			return row;
 		};
 	})(),
-	'ResultList/Pagination/PageLabel': function() {
-		var label = document.createElement('li');
-		label.className = 'disabled';
-		var labelSpan = document.createElement('span');
-		labelSpan.textContent = 'Page';
-		labelSpan.style.cursor = 'default';
-		label.appendChild(labelSpan);
-		return label;
-	},
-	'ResultList/Pagination/Page': function(pageNumber, pageClick) {
-		var page = document.createElement('li');
-		page.className = 'clickable';
-		var pageLink = document.createElement('a');
-		pageLink.textContent = pageNumber;
-		page.addEventListener('click', pageClick);
-		page.appendChild(pageLink);
-		return page;
-	},
-	'ResultList/Pagination/ResultCount': function(reports) {
-		var resultCount = document.createElement('li');
-		resultCount.className = 'disabled';
-		var resultCountSpan = document.createElement('span');
-		resultCountSpan.textContent = reports + (reports == 300 ? '+' : '') + ' reports in total';
-		resultCountSpan.style.cursor = 'default';
-		resultCount.appendChild(resultCountSpan);
-		return resultCount;
-	},
 	'ReportView/History/Item': function(date, user, message, details) {
 		var tr = document.createElement('tr');
 		var timeTd = document.createElement('td');
@@ -121,6 +95,7 @@ var fragmentFactory = {
 $.fn.tooltip.Constructor.DEFAULTS.trigger = 'hover';
 var mapProjection = 'EPSG:900913';
 var siteProjection = 'CRS:84';
+var reportsLimit = 500;
 
 Dashboard = {}; // global namespace
 Dashboard.loadPage = function(url, params, callback) {
@@ -166,16 +141,16 @@ Dashboard.View.prototype.restoreView = function(eventState) {
 };
 Dashboard.View.prototype.activate = function() {};
 
-Dashboard.ListView = function(viewManager, container, filterMapContainer, reportList) {
+Dashboard.ListView = function(viewManager, container, reportList) {
 	Dashboard.View.call(this, viewManager, 'list', container);
 	this.reportList = reportList;
-	this.filterMapContainer = filterMapContainer;
 	this.reports = [];
+	this._loadedReports = [];
+	this._loadedReportsBounds;
 	this._mapLoaded = false;
 	this.reportList.reports = this.reports;
 	this._filterMap;
-	this._circle;
-	this._markers = [];
+	this._filterVectors;
 	this._viewManager = viewManager;
 
 	this.refresh();
@@ -185,120 +160,185 @@ Dashboard.ListView.prototype.activate = function() {
 	var self = this;
 	if (!this._mapLoaded) {
 		this._mapLoaded = true;
-		self._filterMap = new google.maps.Map(this.filterMapContainer, {
-			center: { lat: (datasetBounds.north+datasetBounds.south)/2, lng: (datasetBounds.west+datasetBounds.east)/2 },
-			zoom: 7,
-			clickableIcons: false,
-			mapTypeControl: false,
-			streetViewControl: false
+		var reportsFilterCenter = OpenLayers.LonLat.fromString(localStorage.reportsFilterCenter);
+		self._filterMap = new OpenLayers.Map({
+			div: 'filterMap',
+			center: reportsFilterCenter.transform(siteProjection, mapProjection),
+			layers: [
+				new OpenLayers.Layer.XYZ('Waze Livemap', [
+					'https://worldtiles1.waze.com/tiles/${z}/${x}/${y}.png',
+					'https://worldtiles2.waze.com/tiles/${z}/${x}/${y}.png',
+					'https://worldtiles3.waze.com/tiles/${z}/${x}/${y}.png',
+					'https://worldtiles4.waze.com/tiles/${z}/${x}/${y}.png'
+				], {
+					projection: mapProjection,
+					numZoomLevels: 18,
+					attribution: '&copy; 2006-' + (new Date()).getFullYear() + ' <a href="https://www.waze.com/livemap" target="_blank">Waze Mobile</a>. All Rights Reserved.'
+				})
+			],
+			zoom: Number(localStorage.reportsFilterZoom)
 		});
 		console.log('filterMap', self._filterMap);
-		var filterBounds = new google.maps.Rectangle({
-			bounds: JSON.parse(localStorage.reportsFilterArea),
-			map: self._filterMap,
-			editable: true,
-			draggable: true,
-			zIndex: 10
-		});
-		self._filterMap.fitBounds(filterBounds.getBounds());
-		var dragging = false;
-		filterBounds.addListener('drag', function() {
-			dragging = true;
-		});
-		filterBounds.addListener('dragend', function() {
-			dragging = false;
-			localStorage.reportsFilterArea = JSON.stringify(filterBounds.bounds.toJSON());
-			self.refresh();
-		});
-		filterBounds.addListener('bounds_changed', function() {
-			if (!dragging) {
-				localStorage.reportsFilterArea = JSON.stringify(filterBounds.bounds.toJSON());
+		self._filterMap.events.on({
+			'moveend': () => {
+				localStorage.reportsFilterCenter = self._filterMap.getCenter().transform(mapProjection, siteProjection).toShortString();
+				localStorage.reportsFilterZoom = self._filterMap.getZoom();
 				self.refresh();
+			},
+			'mouseout': () => document.querySelector('#filterMap .title').classList.add('hidden')
+		});
+		self._filterVectors = new OpenLayers.Layer.Vector('Vector Layer', {
+			strategies: [ new OpenLayers.Strategy.Cluster({ distance: 25, threshold: 3 }) ],
+			styleMap: new OpenLayers.StyleMap({
+				"default": new OpenLayers.Style({
+					pointRadius: "${radius}",
+					fillColor: "${fill}",
+					fillOpacity: 0.8,
+					strokeColor: "${stroke}",
+					strokeWidth: "${width}",
+					strokeOpacity: 0.8,
+					label: "${count}",
+					fontColor: "#ffffff",
+					fontSize: "10px",
+					fontWeight: "bold",
+					cursor: "${cursor}"
+				}, {
+					context: {
+						width: (feature) => feature.cluster ? 3 : 2,
+						radius: (feature) => feature.cluster ? Math.min(feature.attributes.count + 5, 10) : 6,
+						title: (feature) => feature.cluster ? 'Cluster of ' + feature.attributes.count + ' reports' : feature.attributes.title,
+						count: (feature) => feature.cluster ? feature.attributes.count : '',
+						fill: (feature) => feature.cluster ? '#aaaaaa' : '#bce8f1',
+						stroke: (feature) => feature.cluster ? '#888888' : '#31708f',
+						cursor: (feature) => feature.cluster ? 'zoom-in' : 'pointer'
+					}
+				}),
+				"select": new OpenLayers.Style({
+					fillColor: "${fill}",
+					strokeColor: "${stroke}"
+				}, {
+					context: {
+						fill: (feature) => feature.cluster ? '#bbbbbb' : '#cdf9f2',
+						stroke: (feature) => feature.cluster ? '#999999' : '#42819f'
+					}
+				})
+			})
+		});
+		self._filterMap.addLayer(self._filterVectors);
+		var highlighter = new OpenLayers.Control.SelectFeature(self._filterVectors, {
+			hover: true,
+			highlightOnly: true,
+			autoActivate: true
+		});
+		highlighter.events.on({
+			featurehighlighted: (e) => {
+				var row = document.getElementById('report-row-' + e.feature.attributes.id);
+				if (row) { // It might be on another page
+					row.classList.add('info');
+				}
+				var title = document.querySelector('#filterMap .title');
+				title.textContent = e.feature.attributes.title;
+				title.classList.remove('hidden');
+			},
+			featureunhighlighted: (e) => {
+				var row = document.getElementById('report-row-' + e.feature.attributes.id);
+				if (row) { // It might be on another page
+					row.classList.remove('info');
+				}
+				document.querySelector('#filterMap .title').classList.add('hidden');
 			}
 		});
-		google.maps.event.addDomListener(window, "resize", function() {
-			var center = self._filterMap.getCenter();
-			google.maps.event.trigger(self._filterMap, "resize");
-			self._filterMap.setCenter(center); 
-		});
+		self._filterMap.addControl(highlighter);
+		self._filterMap.addControl(new OpenLayers.Control.SelectFeature(self._filterVectors, {
+			autoActivate: true,
+			onSelect: (report) => {
+				if (report.cluster) {
+					var currentZoom = self._filterMap.getZoom();
+					self._filterMap.zoomTo(currentZoom+1, {
+						x: (report.geometry.x - self._filterMap.getExtent().left) / self._filterMap.getResolution(),
+						y: (self._filterMap.getExtent().top - report.geometry.y) / self._filterMap.getResolution()
+					});
+				} else {
+					document.querySelector('#filterMap .title').classList.add('hidden');
+					if (history.pushState) {
+						history.pushState({ 'id': report.attributes.id, 'view': 'report' }, null, '#' + report.attributes.id);
+					} else {
+						location.hash = '#' + report.attributes.id;
+					}
+					self._viewManager.switchTo('report');
+				}
+			}
+		}));
+		this._filterMap.addLayer(self._filterVectors);
 		if (typeof managementArea !== 'undefined') {
-			var controlDiv = document.createElement('div');
-			controlDiv.style.backgroundColor = '#fff';
-			controlDiv.style.padding = '2px';
-			controlDiv.style.margin = '3px';
-			var resetAreaLink = document.createElement('a');
-			resetAreaLink.appendChild(document.createTextNode('Reset to management area'));
-			resetAreaLink.style.cursor = 'pointer';
+			var resetAreaLink = document.querySelector('#filterMap .managementReset a');
+			resetAreaLink.parentNode.classList.remove('hidden');
 			resetAreaLink.addEventListener('click', function(e) {
 				e.preventDefault();
-				filterBounds.setBounds(managementArea);
+				self._filterMap.zoomToExtent(managementArea.clone().transform(siteProjection, mapProjection));
 			});
-			controlDiv.appendChild(resetAreaLink);
-			self._filterMap.controls[google.maps.ControlPosition.TOP_LEFT].push(controlDiv);
 		}
-		this._circle = {
-			path: google.maps.SymbolPath.CIRCLE,
-			fillColor: '#aa0000',
-			fillOpacity: 1,
-			scale: 3,
-			strokeColor: '#770000',
-			strokeWeight: 1
-		};
-		Dashboard.loadPage(baseUrl + '/heatmap', {}, function() {
-			var heatmapData = [];
-			this.response.heatmap.forEach(function(entry) {
-				heatmapData.push({location: new google.maps.LatLng(entry.lat, entry.lon), weight: entry.reports});
-			});
-			var heatmap = new google.maps.visualization.HeatmapLayer({
-				data: heatmapData
-			});
-			heatmap.setMap(self._filterMap);
-		});
 	}
-	this.refresh(this.reportList.page);
+	this.refresh();
 };
 // Load the reports matching the current filter options in localStorage
-Dashboard.ListView.prototype.refresh = function(page) {
-	var bounds = JSON.parse(localStorage.reportsFilterArea);
-	var params = {
-		status: localStorage.statusFilter,
-		source: localStorage.sourceFilter,
-		priority: localStorage.priorityFilter,
-		level: localStorage.editorLevelFilter,
-		period: localStorage.periodFilter,
-		followed: (localStorage.followedFilter == 'true' ? 1 : 0),
-		bounds: bounds.west + ',' + bounds.south + ',' + bounds.east + ',' + bounds.north
-	};
+Dashboard.ListView.prototype.refresh = function() {
 	var self = this;
-	var statusId = Status.show('info', 'Loading results...');
-	Dashboard.loadPage(baseUrl + '/query', params, function() {
-		Status.hide(statusId);
+	// Don't refresh if the map hasn't initialized yet
+	if (!self._filterMap) {
+		return;
+	}
+	// Try to retrieve the data from our previous load
+	if (self._loadedReportsBounds && self._loadedReportsBounds.containsBounds(self._filterMap.getExtent())) {
+		var mapExtent = self._filterMap.getExtent().transform(mapProjection, siteProjection);
 		self.reports.length = 0;
-		Array.prototype.push.apply(self.reports, this.response.reports);
-		console.log('ListView refreshed', this.response.reports);
-		self._markers.forEach(function(marker) {
-			marker.setMap(null);
+		self._loadedReports.filter((report) => mapExtent.contains(report.lon, report.lat)).forEach((report) => self.reports.push(report));
+		self.displayReports();
+	} else { // If not, retrieve the data from the server
+		var params = {
+			status: localStorage.statusFilter,
+			source: localStorage.sourceFilter,
+			priority: localStorage.priorityFilter,
+			level: localStorage.editorLevelFilter,
+			period: localStorage.periodFilter,
+			followed: (localStorage.followedFilter == 'true' ? 1 : 0),
+			bounds: self._filterMap.getExtent().transform(mapProjection, siteProjection).toString()
+		};
+		var statusId = Status.show('info', 'Loading results...');
+		Dashboard.loadPage(baseUrl + '/query', params, function() {
+			Status.hide(statusId);
+			self.reports.length = 0;
+			Array.prototype.push.apply(self.reports, this.response.reports);
+			if (self.reports.length < reportsLimit) {
+				Array.prototype.push.apply(self._loadedReports, this.response.reports);
+				self._loadedReportsBounds = self._filterMap.getExtent();
+			} else {
+				self._loadedReports.length = 0;
+				self._loadedReportsBounds = null;
+			}
+			console.log('ListView refreshed', this.response.reports);
+			self.displayReports();
 		});
-		self._markers = [];
-		this.response.reports.forEach(function(report) {
-			var marker = new google.maps.Marker({
-				position: {lat: report.lat, lng: report.lon},
-				map: self._filterMap,
+	}
+};
+
+Dashboard.ListView.prototype.displayReports = function() {
+	var markers = [];
+	if (this.reports) {
+		this.reports.forEach(function(report) {
+			var marker = new OpenLayers.Feature.Vector(new OpenLayers.Geometry.Point(report.lon, report.lat).transform(siteProjection, mapProjection), {
 				title: report.description,
-				icon: self._circle
+				id: report.id
 			});
-			marker.addListener('click', function() {
-				if (history.pushState) {
-					history.pushState({ 'id': report.id, 'view': 'report' }, null, '#' + report.id);
-				} else {
-					location.hash = '#' + report.id;
-				}
-				self._viewManager.switchTo('report');
-			});
-			self._markers.push(marker);
+			report.marker = marker.id;
+			markers.push(marker);
 		});
-		self.reportList.refresh(page);
-	});
+		this._filterVectors.removeAllFeatures();
+		this._filterVectors.addFeatures(markers);
+	} else {
+		this._filterVectors.removeAllFeatures();
+	}
+	this.reportList.refresh(0);
 };
 
 Dashboard.ReportList = function(viewManager, paginationContainer, listContainer) {
@@ -306,38 +346,30 @@ Dashboard.ReportList = function(viewManager, paginationContainer, listContainer)
 	this.reportsPerPage = 20;
 	this._listContainer = listContainer;
 	this._paginationContainer = paginationContainer;
+	this._prevPage = paginationContainer.querySelector('button:nth-child(1)');
+	this._nextPage = paginationContainer.querySelector('button:nth-child(2)');
 	this.reports = [];
 	this._viewManager = viewManager;
+	this._prevPage.addEventListener('click', () => {
+		this.refresh(this.page - 1);
+	});
+	this._nextPage.addEventListener('click', () => {
+		this.refresh(this.page + 1);
+	});
 };
 Dashboard.ReportList.prototype.refresh = function(page) {
 	var toPage = page || 0;
-	this._paginationContainer.removeAll();
+	var maximumPage = Math.floor((this.reports.length - 1) / this.reportsPerPage);
+	this.page = Math.max(0, Math.min(toPage, maximumPage));
+	this._prevPage.classList.toggle('disabled', this.page == 0 || this.reports.length < this.reportsPerPage);
+	this._nextPage.classList.toggle('disabled', this.page == maximumPage || this.reports.length < this.reportsPerPage);
 	if (this.reports.length > 0) {
-		this._paginationContainer.appendChild(fragmentFactory['ResultList/Pagination/PageLabel']());
-		var self = this;
-		Array.apply(0, Array(Math.ceil(this.reports.length / this.reportsPerPage))).map(function(e, idx) {
-			self._paginationContainer.appendChild(fragmentFactory['ResultList/Pagination/Page'](idx + 1, function() {
-				/*if (history.pushState) {
-					history.pushState({ 'page': idx, 'view': 'list' }, null, 'reports');
-				}*/
-				self.showPage(idx);
-			}));
-		});
-		this._paginationContainer.appendChild(fragmentFactory['ResultList/Pagination/ResultCount'](this.reports.length));
+		this._paginationContainer.querySelector('span').textContent = ((this.page * this.reportsPerPage) + 1) + '-' + Math.min((this.page * this.reportsPerPage) + this.reportsPerPage, this.reports.length) + ' of ' + this.reports.length;
+		this.showPage();
 	}
 	this._listContainer.querySelector('#no-reports').classList.toggle('hidden', this.reports.length > 0);
-	this.showPage(toPage);
 };
-Dashboard.ReportList.prototype.showPage = function(pageNumber) {
-	this.page = Math.min(pageNumber, Math.floor((this.reports.length - 1) / this.reportsPerPage));
-	console.log('ReportList showPage', this.page, this.reports);
-	// Update pagination
-	if (this._paginationContainer.querySelector('li.active')) {
-		this._paginationContainer.querySelector('li.active').classList.remove('active');
-	}
-	if (this.reports.length > 0) {
-		this._paginationContainer.children.item(this.page+1).classList.add('active');
-	}
+Dashboard.ReportList.prototype.showPage = function() {
 	// Clear the page of reports
 	while (this._listContainer.lastChild.id != 'no-reports') {
 		this._listContainer.removeChild(this._listContainer.lastChild);
@@ -416,7 +448,6 @@ Dashboard.ReportView = function(viewManager, container) {
 		if (!isHoveringCoords) {
 			return;
 		}
-		console.log('Copy to clipboard', e, isHoveringCoords);
 		e.clipboardData.setData('text/plain', copyCoords.dataset.coords);
 		e.preventDefault();
 		// The following section is convoluted because Bootstrap's tooltip code doesn't work well when replacing the tooltip content while it is being displayed, bleh.
@@ -909,7 +940,7 @@ Dashboard.ReportView.prototype.refresh = function() {
 			});
 		});
 		rows.forEach((row, name) => {
-			var cols = Array.from(row.childNodes); // .forEach is still a bit too recently added to NodeListµ
+			var cols = Array.from(row.childNodes); // .forEach is still a bit too recently added to NodeList
 			var firstValue = row.childNodes[1].textContent;
 			cols.forEach((col, index) => {
 				if (index == 0) {
@@ -1049,7 +1080,7 @@ Dashboard.ReportView.prototype.refresh = function() {
 		// Sort features so deleted lines are put underneath added lines
 		features.sort((a,b) => b.attributes.style.localeCompare(a.attributes.style));
 		vectors.addFeatures(features);
-		console.log(this._reportMap);
+		console.log('reportMap', this._reportMap);
 	} else {
 		vectors.addFeature(new OpenLayers.Geometry.Point(center.lon, center.lat));
 	}
@@ -1098,10 +1129,18 @@ window.addEventListener('load', function() {
 		localStorage.periodFilter = 'soon';
 	}
 	periodFilter.value = localStorage.periodFilter;
-	if (localStorage.reportsFilterArea == null) {
-		localStorage.reportsFilterArea = JSON.stringify(datasetBounds);
+	if (localStorage.reportsFilterCenter == null) {
+		localStorage.reportsFilterCenter = datasetBounds.getCenterLonLat().toShortString();
+		localStorage.reportsFilterZoom = 11;
 	}
-	var bounds = JSON.parse(localStorage.reportsFilterArea);
+	// Convert Google Maps format to OpenLayers format
+	if (localStorage.reportsFilterArea) {
+		var oldBoundsObj = JSON.parse(localStorage.reportsFilterArea);
+		var oldBounds = new OpenLayers.Bounds(oldBoundsObj.west, oldBoundsObj.south, oldBoundsObj.east, oldBoundsObj.north);
+		localStorage.reportsFilterCenter = oldBounds.getCenterLonLat().toShortString();
+		localStorage.reportsFilterZoom = 11;
+		localStorage.removeItem('reportsFilterArea');
+	}
 	var followedFilter = document.querySelector('#followedFilter');
 	if (followedFilter) {
 		if (!localStorage.followedFilter) {
@@ -1114,7 +1153,7 @@ window.addEventListener('load', function() {
 	var viewManager = new Dashboard.ViewManager();
 	var reportView = new Dashboard.ReportView(viewManager, document.querySelector('#report-view'));
 	var reportList = new Dashboard.ReportList(viewManager, document.querySelector('#pagination'), document.querySelector('#reports'));
-	var listView = new Dashboard.ListView(viewManager, document.querySelector('#list-view'), document.querySelector('#filterMap'), reportList);
+	var listView = new Dashboard.ListView(viewManager, document.querySelector('#list-view'), reportList);
 
 	// Set listeners
 	window.addEventListener('popstate', function(event) {
