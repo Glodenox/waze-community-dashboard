@@ -447,7 +447,32 @@ Dashboard.ReportView = function(viewManager, container) {
 		isHoveringCoords = false;
 	});
 	copyCoords.addEventListener('click', function() {
-		prompt('You can also press Ctrl+C while hovering over the button', copyCoords.dataset.coords);
+		var copyInput = document.getElementById('copy-input');
+		copyInput.value = copyCoords.dataset.coords;
+		copyInput.select();
+		if (!document.execCommand('copy')) {
+			prompt('You can also press Ctrl+C while hovering over the button', copyCoords.dataset.coords);
+		} else {
+			// The following section is convoluted because Bootstrap's tooltip code doesn't work well when replacing the tooltip content while it is being displayed, bleh.
+			$(copyCoords).tooltip('destroy');
+			setTimeout(function() {
+				$(copyCoords).tooltip({
+					container: 'body',
+					title: 'Coordinates copied!'
+				});
+				$(copyCoords).tooltip('show');
+			}, 200);
+			setTimeout(function() {
+				$(copyCoords).tooltip('destroy');
+				setTimeout(function() {
+					$(copyCoords).tooltip({
+						container: 'body',
+						title: 'Copy location coordinates'
+					});
+				}, 200);
+			}, 4000);
+		}
+		this.focus();
 	});
 	document.addEventListener('copy', function(e) {
 		if (!isHoveringCoords) {
@@ -469,14 +494,14 @@ Dashboard.ReportView = function(viewManager, container) {
 			setTimeout(function() {
 				$(copyCoords).tooltip({
 					container: 'body',
-					title: 'Ctrl+C to copy coordinates'
+					title: 'Copy location coordinates'
 				});
 			}, 200);
 		}, 4000);
 	});
 	$(copyCoords).tooltip({
 		container: 'body',
-		title: 'Ctrl+C to copy coordinates'
+		title: 'Copy location coordinates'
 	});
 	var reportClaim = document.getElementById('claim');
 	if (reportClaim) {

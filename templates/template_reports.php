@@ -109,6 +109,7 @@
 									<button class="btn btn-default"><i class="fa fa-chevron-left"></i></button>
 									<button class="btn btn-default"><i class="fa fa-chevron-right"></i></button>
 								</div>
+								<input id="copy-input" />
 								<div class="btn-group">
 									<a class="btn btn-default" id="openInWME" target="_blank"><i class="fa fa-map"></i> Waze Map Editor</a>
 									<button class="btn btn-default" id="copyCoords"><i class="fa fa-files-o"></i></button>

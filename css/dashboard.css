@@ -175,6 +175,11 @@ body {
 	z-index: 2000;
 }
 
+#copy-input {
+	position: absolute;
+	left: -9999px;
+}
+
 .no-results {
 	padding: 3em;
 	font-weight: 700;
