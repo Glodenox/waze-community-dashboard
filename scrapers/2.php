@@ -19,7 +19,7 @@ class Scraper {
 
 		set_time_limit(0);
 
-		$url = sprintf(SCRAPER_URL, 0, 10000); // Do not lower, all other reports will be marked as cancelled
+		$url = sprintf(SCRAPER_URL, 0, 50000); // Do not lower, all other reports will be marked as cancelled
 		$h = curl_init($url);
 		curl_setopt_array($h, array(
 			CURLOPT_RETURNTRANSFER => true,
@@ -53,11 +53,11 @@ class Scraper {
 				'received' => 0
 			);
 		}
-		if (count($manifestations) == 10000) {
+		if (count($manifestations) == 50000) {
 			$stmt = $db->prepare('UPDATE dashboard_sources SET last_update = CURRENT_TIMESTAMP(), last_execution_result = ? WHERE id = ' . SCRAPER_ID);
 			execute($stmt, array(json_encode(array('errors' => array_merge(array('Reached maximum amount of events when polling service, increase limit!'), $code_errors)))));;
 			return array(
-				'received' => 10000
+				'received' => 50000
 			);
 		}
 
@@ -99,6 +99,10 @@ class Scraper {
 		$stmt_buffer = array();
 		foreach ($manifestations as $manifestation) {
 			$startDateTime = new DateTime($manifestation->startDateTime, new DateTimeZone('Europe/Brussels'));
+			$startTimestamp = $startDateTime->format('U');
+			if ($startTimestamp < 0) { // Deal with weirdly old start dates properly
+				$startTimestamp = 0;
+			}
 			$endDateTime = new DateTime($manifestation->endDateTime, new DateTimeZone('Europe/Brussels'));
 			unset($cancelled_events[$manifestation->gipodId]);
 			// Is this a report to potentially update?
@@ -106,13 +110,13 @@ class Scraper {
 				$match = $current_events[$manifestation->gipodId];
 				$archived = $match['status'] == STATUS_TO_REMOVE || $match['status'] == STATUS_REMOVED;
 				// Do we need to update the existing report?
-				if ($startDateTime->format('U') != $match['startTime'] || $endDateTime->format('U') != $match['endTime'] || $archived) {
+				if ($startTimestamp != $match['startTime'] || $endDateTime->format('U') != $match['endTime'] || $archived) {
 					if ($match['status'] != STATUS_TO_IGNORE) {
 						$match['status'] = STATUS_UPDATED;
 					}
 					$db->beginTransaction();
 					$stmt = $db->prepare('UPDATE dashboard_reports SET start_time = ?, end_time = ?, lon = ?, lat = ?, description = ?, status = ?, priority = ?, source = ? WHERE id = ?');
-					execute($stmt, array($startDateTime->format('U'), $endDateTime->format('U'), $manifestation->coordinate->coordinates[0], $manifestation->coordinate->coordinates[1],
+					execute($stmt, array($startTimestamp, $endDateTime->format('U'), $manifestation->coordinate->coordinates[0], $manifestation->coordinate->coordinates[1],
 							trim($manifestation->description), $match['status'], ($manifestation->importantHindrance ? PRIORITY_HIGH : PRIORITY_LOW), SCRAPER_ID, $match['id']));
 					$stmt = $db->prepare(REPORT_HISTORY_INSERT);
 					$matchedEndTime = new DateTime('@' . $match['endTime']);
@@ -135,7 +139,7 @@ class Scraper {
 				// Try to update the external data, we don't insert the record if it fails
 				if ($this->update_external_data($current_report, false)) {
 					// put up to 20 statements in an array so we can do a multi-insert
-					$stmt_buffer[] = array($startDateTime->format('U'), $endDateTime->format('U'), $manifestation->coordinate->coordinates[0], $manifestation->coordinate->coordinates[1],
+					$stmt_buffer[] = array($startTimestamp, $endDateTime->format('U'), $manifestation->coordinate->coordinates[0], $manifestation->coordinate->coordinates[1],
 							trim($manifestation->description), $current_report['status'], ($manifestation->importantHindrance ? PRIORITY_HIGH : PRIORITY_LOW), SCRAPER_ID, $manifestation->gipodId,
 							json_encode($current_report['external_data']), json_encode($current_report['geojson']));
 					$stats[$current_report['status']]++;
