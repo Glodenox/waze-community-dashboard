@@ -104,7 +104,7 @@ var Status = (function() {
 				clearTimeout(timeoutId);
 			}
 			if (ttl) {
-				timeoutId = setTimeout(Status.hide, ttl);
+				timeoutId = setTimeout(() => Status.hide(counter), ttl);
 			}
 			counter += 1;
 			return counter;

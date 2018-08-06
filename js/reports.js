@@ -78,16 +78,29 @@ var fragmentFactory = {
 		tr.appendChild(userTd);
 		var detailsTd = document.createElement('td');
 		if (details != null) {
-			var detailsInfo = document.createElement('i');
-			detailsInfo.className = 'fa fa-info-circle fa-fw';
-			detailsInfo.style.color = '#428bca';
-			detailsInfo.style.cursor = 'help';
-			detailsInfo.title = details;
-			$(detailsInfo).tooltip({
-				container: 'body'
+			var detailsInfo = document.createElement('a');
+			var detailsInfoIcon = document.createElement('i');
+			detailsInfoIcon.className = 'fa fa-chevron-right fa-fw';
+			detailsInfo.appendChild(detailsInfoIcon);
+			tr.style.cursor = 'pointer';
+			tr.addEventListener('click', () => {
+				detailsInfoIcon.classList.toggle('fa-chevron-right');
+				detailsInfoIcon.classList.toggle('fa-chevron-up');
+				details.classList.toggle('hidden');
 			});
 			detailsTd.appendChild(detailsInfo);
 		}
+		tr.appendChild(detailsTd);
+		return tr;
+	},
+	'ReportView/History/ItemDetails': function(details) {
+		var tr = document.createElement('tr');
+		tr.className = 'hidden info';
+		var detailsTd = document.createElement('td');
+		detailsTd.style.paddingLeft = '15px';
+		detailsTd.style.whiteSpace = 'pre';
+		detailsTd.colSpan = 4;
+		detailsTd.textContent = details;
 		tr.appendChild(detailsTd);
 		return tr;
 	}
@@ -1124,7 +1137,9 @@ Dashboard.ReportView.prototype.refresh = function() {
 		} else if (history.action_id == 4) {
 			description += ' to: ' + history.value;
 		}
-		historyList.appendChild(fragmentFactory['ReportView/History/Item'](history.timestamp, history.username, description, history.details));
+		var detailsFragment = (history.details ? fragmentFactory['ReportView/History/ItemDetails'](history.details) : null);
+		historyList.appendChild(fragmentFactory['ReportView/History/Item'](history.timestamp, history.username, description, detailsFragment));
+		historyList.appendChild(detailsFragment);
 	});
 	var notes = this.container.querySelector('#report-notes');
 	notes.removeAll();
