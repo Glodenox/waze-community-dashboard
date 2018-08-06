@@ -367,9 +367,10 @@ Dashboard.ReportList.prototype.refresh = function(page) {
 	this.page = Math.max(0, Math.min(toPage, maximumPage));
 	this._prevPage.classList.toggle('disabled', this.page == 0 || this.reports.length < this.reportsPerPage);
 	this._nextPage.classList.toggle('disabled', this.page == maximumPage || this.reports.length < this.reportsPerPage);
-	if (this.reports.length > 0) {
-		this._paginationContainer.querySelector('span').textContent = ((this.page * this.reportsPerPage) + 1) + '-' + Math.min((this.page * this.reportsPerPage) + this.reportsPerPage, this.reports.length) + ' of ' + this.reports.length;
-	}
+	this._paginationContainer.querySelector('span').textContent = (this.reports.length > 0 ?
+		((this.page * this.reportsPerPage) + 1) + '-' + Math.min((this.page * this.reportsPerPage) + this.reportsPerPage, this.reports.length) + ' of ' + this.reports.length :
+		''
+	);
 	this._listContainer.querySelector('#no-reports').classList.toggle('hidden', this.reports.length > 0);
 	this.showPage();
 };
@@ -708,7 +709,7 @@ Dashboard.ReportView.prototype.refresh = function() {
 	var period = this.container.querySelector('.report-period');
 	period.removeAll();
 	period.parentNode.style.display = (report.start_time || report.end_time ? 'block' : 'none');
-	if (report.start_time) {
+	if (report.start_time != null) {
 		var startTime = new Date(report.start_time * 1000);
 		var startElement = document.createElement('time');
 		startElement.dateTime = startTime.toISOString();
@@ -717,7 +718,7 @@ Dashboard.ReportView.prototype.refresh = function() {
 		startElement.appendChild(document.createTextNode(startTime.toTimeString().substr(0, 5)));
 		period.appendChild(startElement);
 	}
-	if (report.end_time) {
+	if (report.end_time != null) {
 		var pointer = document.createElement('i');
 		pointer.className = 'fa fa-chevron-right';
 		pointer.style.margin = '0 1em';
