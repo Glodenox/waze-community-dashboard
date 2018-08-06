@@ -19,6 +19,11 @@ switch($folders[2]) {
 		if ($source->last_update > time() - $source->update_cooldown) {
 			json_fail('Source was updated too recently already');
 		}
+		$semaphore = sem_get(ftok(__FILE__, $source_id));
+		if (!sem_acquire($semaphore, TRUE)) {
+			file_put_contents('logs/scraper-general.err', 'Source is already being updated (at ' . time() . ' by ' . $_SERVER['REMOTE_ADDR'] . ")\n", FILE_APPEND);
+			json_fail('Source is already being updated');
+		}
 		require('scrapers/' . $source_id . '.php');
 		$db->beginTransaction();
 		$stmt = $db->prepare("SELECT state FROM dashboard_sources WHERE id = $source_id FOR UPDATE");
@@ -44,7 +49,7 @@ switch($folders[2]) {
 		try {
 			$results = $scraper->update_source();
 		} catch(Exception $e) {
-			file_put_contents('logs/forum-scraper.err', $e . "\n", FILE_APPEND);
+			file_put_contents('logs/scraper-' . $source_id . '.err', $e . "\n", FILE_APPEND);
 			$results = array(
 				'errors' => $e->__toString()
 			);
@@ -52,6 +57,7 @@ switch($folders[2]) {
 			$db->query("UPDATE dashboard_sources SET state = 'inactive' WHERE id = $source_id");
 		}
 		restore_error_handler();
+		sem_release($semaphore);
 
 		// TODO: whitelist instead of blacklist here
 		unset($results['received']);
