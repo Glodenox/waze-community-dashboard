@@ -1139,7 +1139,9 @@ Dashboard.ReportView.prototype.refresh = function() {
 		}
 		var detailsFragment = (history.details ? fragmentFactory['ReportView/History/ItemDetails'](history.details) : null);
 		historyList.appendChild(fragmentFactory['ReportView/History/Item'](history.timestamp, history.username, description, detailsFragment));
-		historyList.appendChild(detailsFragment);
+		if (detailsFragment) {
+			historyList.appendChild(detailsFragment);
+		}
 	});
 	var notes = this.container.querySelector('#report-notes');
 	notes.removeAll();
