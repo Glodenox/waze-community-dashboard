@@ -73,7 +73,7 @@ switch($folders[2]) {
 			send_notification(array(
 				"icon_emoji" => ":waze:",
 				"text" => '<http' . ($_SERVER['SERVER_PORT']==443 ? 's' : '') . '://' . $_SERVER['SERVER_NAME'] . ROOT_FOLDER . "reports|Source _'{$source->name}'_ updated>: " . implode(', ', $results) . '.'
-			));
+			), 'Belux');
 		}
 
 		json_send(array(

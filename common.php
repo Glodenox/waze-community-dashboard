@@ -159,13 +159,13 @@ function redirect($folder) {
 	exit();
 }
 
-function send_notification($payload) {
+function send_notification($payload, $server = 'Netherlands') {
 	// Don't send notifications from the test server to other people
-	if (DEBUG && array_key_exists('channel', $payload) && $payload['channel'] != '@glodenox_4' && $payload['channel'] != 'U0959H276') {
+	if (DEBUG && array_key_exists('channel', $payload) && $payload['channel'] != '@glodenox' && $payload['channel'] != 'U0959H276') {
 		return;
 	}
 	// Call Slack webhook for notification
-	$h = curl_init(SLACK_INCOMING_WEBHOOK_URL);
+	$h = curl_init(SLACK_INCOMING_WEBHOOKS[$server]);
 	curl_setopt_array($h, array(
 		CURLOPT_RETURNTRANSFER => true,
 		CURLOPT_POST => true,
