@@ -111,7 +111,7 @@
 								</div>
 								<input id="copy-input" />
 								<div class="btn-group">
-									<a class="btn btn-default" id="openInWME" target="_blank"><i class="fa fa-map"></i> Waze Map Editor</a>
+									<a class="btn btn-default" id="openInWME" target="wme"><i class="fa fa-map"></i> Waze Map Editor</a>
 									<button class="btn btn-default" id="copyCoords"><i class="fa fa-files-o"></i></button>
 								</div>
 <?php if (isset($user)) { ?>
