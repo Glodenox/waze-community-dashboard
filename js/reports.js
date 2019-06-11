@@ -109,6 +109,7 @@ $.fn.tooltip.Constructor.DEFAULTS.trigger = 'hover';
 var mapProjection = 'EPSG:900913';
 var siteProjection = 'CRS:84';
 var reportsLimit = 500;
+OpenLayers.IMAGE_RELOAD_ATTEMPTS = 2;
 
 Dashboard = {}; // global namespace
 Dashboard.loadPage = function(url, params, callback) {
@@ -206,10 +207,10 @@ Dashboard.ListView.prototype.activate = function() {
 				"default": new OpenLayers.Style({
 					pointRadius: "${radius}",
 					fillColor: "${fill}",
-					fillOpacity: 0.8,
+					fillOpacity: 0.7,
 					strokeColor: "${stroke}",
 					strokeWidth: "${width}",
-					strokeOpacity: 0.8,
+					strokeOpacity: 0.7,
 					label: "${count}",
 					fontColor: "#ffffff",
 					fontSize: "10px",
@@ -1020,7 +1021,7 @@ Dashboard.ReportView.prototype.refresh = function() {
 			symbolizer: {
 				strokeColor: '#00ff00',
 				strokeWidth: 6,
-				strokeOpacity: 0.8
+				strokeOpacity: 0.7
 			}
 		}),
 		new OpenLayers.Rule({
@@ -1032,7 +1033,7 @@ Dashboard.ReportView.prototype.refresh = function() {
 			symbolizer: {
 				strokeColor: '#ff0000',
 				strokeWidth: 16,
-				strokeOpacity: 0.8
+				strokeOpacity: 0.7
 			}
 		}),
 		new OpenLayers.Rule({
@@ -1041,7 +1042,7 @@ Dashboard.ReportView.prototype.refresh = function() {
 				strokeWidth: 4,
 				fillColor: '#86cffe',
 				strokeColor: '#428bca',
-				fillOpacity: 1
+				fillOpacity: 0.7
 			}
 		})
 	]);
@@ -1076,7 +1077,7 @@ Dashboard.ReportView.prototype.refresh = function() {
 				strokeWidth: 4,
 				fillColor: '#86cffe',
 				strokeColor: '#428bca',
-				fillOpacity: 1
+				fillOpacity: 0.7
 			}
 		})
 	]);
@@ -1090,7 +1091,7 @@ Dashboard.ReportView.prototype.refresh = function() {
 			symbolizer: {
 				strokeColor: '#00ff00',
 				strokeWidth: 6,
-				strokeOpacity: 1
+				strokeOpacity: 0.7
 			}
 		}),
 		new OpenLayers.Rule({
@@ -1102,7 +1103,7 @@ Dashboard.ReportView.prototype.refresh = function() {
 			symbolizer: {
 				strokeColor: '#ff0000',
 				strokeWidth: 16,
-				strokeOpacity: 1
+				strokeOpacity: 0.7
 			}
 		}),
 		new OpenLayers.Rule({
@@ -1111,7 +1112,7 @@ Dashboard.ReportView.prototype.refresh = function() {
 				strokeWidth: 4,
 				fillColor: '#86cffe',
 				strokeColor: '#428bca',
-				fillOpacity: 1
+				fillOpacity: 0.7
 			}
 		})
 	]);
