@@ -29,11 +29,11 @@
 					</div>
 <?php } ?>
 					<div class="row">
-<? if (isset($source_stats) && count($source_stats !== 0)) { ?>
+<?php if (isset($source_stats) && count($source_stats !== 0)) { ?>
 						<div id="reportStatistics" class="<?=(isset($user) && count($source_personal_stats) !== 0 ? 'col-md-3 col-sm-6' : 'col-md-6 col-sm-12')?>" style="height:350px"></div>
-<? if (isset($user) && count($source_personal_stats) !== 0) { ?>
+<?php	if (isset($user) && count($source_personal_stats) !== 0) { ?>
 						<div id="reportPersonalStatistics" class="col-md-3 col-sm-6" style="height:350px"></div>
-<?php }
+<?php	}
 } ?>
 						<dl class="dl-horizontal col-md-6 col-sm-12" style="margin-top: 4em">
 							<dt>URL to source</dt>
@@ -71,6 +71,7 @@
 				<script type="text/javascript">
 var mapProjection = 'EPSG:900913';
 var siteProjection = 'CRS:84';
+OpenLayers.IMAGE_RELOAD_ATTEMPTS = 2;
 var areaMap = new OpenLayers.Map({
 	div: 'areaMap',
 	center: (new OpenLayers.LonLat(<?=($map_bounds->min_lon+$map_bounds->max_lon)/2?>, <?=($map_bounds->min_lat+$map_bounds->max_lat)/2?>)).transform(siteProjection, mapProjection),
