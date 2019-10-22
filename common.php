@@ -171,7 +171,7 @@ function send_notification($payload, $server = 'Netherlands') {
 		CURLOPT_POST => true,
 		CURLOPT_SSL_VERIFYPEER => false,
 		CURLOPT_POSTFIELDS => array("payload" => json_encode($payload)),
-		CURLOPT_USERAGENT => "Waze Benelux Dashboard"
+		CURLOPT_USERAGENT => "Waze Community Dashboard"
 	));
 	$result = curl_exec($h);
 	curl_close($h);
@@ -198,7 +198,7 @@ function time_elapsed_string($datetime) {
 	$diff->w = floor($diff->d / 7);
 	$diff->d -= $diff->w * 7;
 
-	$string = array(
+	$units = array(
 		'y' => 'year',
 		'm' => 'month',
 		'w' => 'week',
@@ -206,11 +206,10 @@ function time_elapsed_string($datetime) {
 		'h' => 'hour',
 		'i' => 'minute',
 	);
-	foreach ($string as $k => &$v) {
-		if ($diff->$k) {
-			$v = $diff->$k . ' ' . $v . ($diff->$k > 1 ? 's' : '');
-		} else {
-			unset($string[$k]);
+	$string = [];
+	foreach ($units as $unit => $name) {
+		if ($diff->$unit) {
+			$string[] = $diff->$unit . ' ' . $name . ($diff->$unit > 1 ? 's' : '');
 		}
 	}
 
