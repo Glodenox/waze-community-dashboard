@@ -115,7 +115,7 @@ switch($folders[1]) {
 			$report['external_data'] = unserialize($report['external_data']);
 		}
 		$report['geojson'] = json_decode($report['geojson']);
-		if (file_exists('scrapers/' . $report['source'] . '.php') && (!$report['external_data'] || strlen($report['external_data']) == 0 || (isset($_GET['force']) && isset($user)))) {
+		if (file_exists('scrapers/' . $report['source'] . '.php') && (!$report['external_data'] || count($report['external_data']) == 0 || (isset($_GET['force']) && isset($user)))) {
 			require('scrapers/' . $report['source'] . '.php');
 			$scraper = new Scraper();
 			try {
@@ -202,7 +202,7 @@ switch($folders[1]) {
 		if (!isset($_GET['notes']) || trim($_GET['notes']) == '') {
 			json_fail('Notes is missing or empty');
 		}
-		if (strlen($_GET['notes']) > 1000) {
+		if (mb_strlen($_GET['notes']) > 1000) {
 			json_fail('Notes too long (maximum 1000 characters)');
 		}
 		$stmt = $db->prepare('UPDATE dashboard_reports SET notes = ? WHERE id = ?');
