@@ -66,6 +66,9 @@ body {
   color: #fff;
   background-color: #428bca;
 }
+.nav-sidebar .badge {
+  float: right;
+}
 
 
 /*
@@ -266,4 +269,8 @@ tr.clickable > td > a, tr.clickable > td > a:hover {
 
 .tooltip {
 	white-space: pre-line;
+}
+
+.olImageLoadError {
+	background-color: #eee !important;
 }
