@@ -47,14 +47,40 @@ const STATUSES = array(
 );
 
 try {
-	$db = new PDO(sprintf('mysql:dbname=%s;host=%s;charset=utf8', DB_DATABASE, DB_HOST), DB_USERNAME, DB_PASSWORD);
+	$db = new PDO(sprintf('mysql:dbname=%s;host=%s;port=%s;charset=utf8', DB_DATABASE, DB_HOST, DB_PORT), DB_USERNAME, DB_PASSWORD);
 } catch (PDOException $e) {
 	die('Connection failed: ' . $e->getMessage());
 }
 
 // make our own PHP session handler
 class DBSessionHandler implements SessionHandlerInterface {
-	public function open($save_path, $name) {
+	public function __construct() {
+		session_set_save_handler(
+			array($this, 'open'),
+			array($this, 'close'),
+			array($this, 'read'),
+			array($this, 'write'),
+			array($this, 'destroy'),
+			array($this, 'gc')
+		);
+		register_shutdown_function('session_write_close');
+		session_name('Dashboard_Session_ID');
+		session_start([
+			'cookie_path' => rtrim(ROOT_FOLDER, '/')
+		]);
+		$current_settings = session_get_cookie_params();
+		// Need to set the cookie manual to update the expires timestamp
+		setcookie(session_name(), session_id(), [
+			'expires' => time() + COOKIE_LIFETIME,
+			'secure' => true,
+			'httponly' => true,
+			'samesite' => 'Lax',
+			'path' => $current_settings['path'],
+			'domain' => $current_settings['domain']
+		]);
+	}
+
+	public function open($save_path, $session_id) {
 		return true;
 	}
 
@@ -65,7 +91,6 @@ class DBSessionHandler implements SessionHandlerInterface {
 	public function read($session_id) {
 		global $db;
 		$stmt = $db->prepare('SELECT session_data FROM dashboard_user_sessions WHERE session_id = ? AND session_expires > ?');
-		
 		if ($stmt->execute(array($session_id, time()))) {
 			if ($obj = $stmt->fetchObject()) {
 				return $obj->session_data;
@@ -76,29 +101,18 @@ class DBSessionHandler implements SessionHandlerInterface {
 
 	public function write($session_id, $session_data) {
 		global $db;
-		if ($session_data == '') {
-			if (preg_match('/^[a-zA-Z0-9,-]{22,40}$/', $session_id) !== 1) {
-				return false; // invalid session id
-			}
-			$stmt = $db->prepare('DELETE FROM dashboard_user_sessions WHERE session_id = ?');
-			return $stmt->execute(array($session_id));
-		} else {
-			$expire = time() + 30*24*60*60; // + 30 days
-			$stmt = $db->prepare('REPLACE INTO dashboard_user_sessions SET session_id = ?, session_expires = ?, session_data = ?');
-			return $stmt->execute(array($session_id, $expire, $session_data));
-		}
+		$expire = time() + COOKIE_LIFETIME;
+		$stmt = $db->prepare('REPLACE INTO dashboard_user_sessions SET session_id = ?, session_expires = ?, session_data = ?, user_agent = ?, ip_address = ?');
+		return $stmt->execute(array($session_id, $expire, $session_data, $_SERVER['HTTP_USER_AGENT'], $_SERVER['REMOTE_ADDR']));
 	}
 
 	public function destroy($session_id) {
 		global $db;
-		if (preg_match('/^[a-zA-Z0-9,-]{22,40}$/', $session_id) !== 1) {
-			return false; // invalid session id
-		}
-		$stmt = $db->prepare('DELETE FROM dashboard_user_sessions WHERE session_id = ?');
+		$stmt = $db->prepare('DELETE FROM dashboard_user_sessions WHERE session_id = ? LIMIT 1');
 		return $stmt->execute(array($session_id));
 	}
 
-	// Note: ignoring the maxlifetime argument on purpose, we'll decide ourselves when to remove
+	// Note: ignoring the maxlifetime argument on purpose, we've decided ourselves when to remove
 	public function gc($maxlifetime) {
 		global $db;
 		$stmt = $db->prepare('DELETE FROM dashboard_user_sessions WHERE session_expires < ?');
@@ -106,15 +120,19 @@ class DBSessionHandler implements SessionHandlerInterface {
 	}
 }
 
-$handler = new DBSessionHandler();
-session_set_save_handler($handler, true);
-session_name('SESSIONID');
-session_start();
-setcookie(session_name(), session_id(), time() + 30*24*60*60, '/', $_SERVER['SERVER_NAME']);
+ini_set('session.gc_maxlifetime', 30*24*60*60);
+// Handler registers itself in __construct
+new DBSessionHandler();
+
+function json_encode_safe($value, $options = 0, $depth = 512) {
+	// Deal with PHP bug surrounding precision of floats in json_encode: https://stackoverflow.com/questions/42981409/php7-1-json-encode-float-issue
+	// Also limit the precision to 6 while we're at it
+	return preg_replace('/(\.[0-9]{6})[0-9]+/', '\1', json_encode($value, $options, $depth));
+}
 
 function json_fail($error_message) {
 	header($_SERVER["SERVER_PROTOCOL"] . ' 400 Invalid Request', true, 400); 
-	echo json_encode(array(
+	echo json_encode_safe(array(
 		'ok' => false,
 		'error' => $error_message
 	), JSON_NUMERIC_CHECK);
@@ -126,19 +144,19 @@ function json_send($obj = null) {
 	if (count($code_errors) > 0) {
 		json_fail(count($code_errors) == 1 ? $code_errors[0] : $code_errors);
 	} else if ($obj === null) {
-		echo json_encode(array(
+		echo json_encode_safe(array(
 			'ok' => true
 		), JSON_NUMERIC_CHECK);
 	} else {
-		echo json_encode(array_merge(array('ok' => true), $obj), JSON_NUMERIC_CHECK);
+		echo json_encode_safe(array_merge(array('ok' => true), $obj), JSON_NUMERIC_CHECK);
 	}
 	exit;
 }
 
 function execute($stmt, $values) {
 	$result = $stmt->execute($values);
-	if (!$result || count($stmt->errorInfo()[2]) > 0) {
-		json_fail("Database statement failed due to: " . (count($stmt->errorInfo()[2]) > 0 ? $stmt->errorInfo()[2] : $stmt->errorInfo()[1]));
+	if (!$result || strlen($stmt->errorInfo()[2]) > 0) {
+		json_fail("Database statement failed due to: " . (strlen($stmt->errorInfo()[2]) > 0 ? $stmt->errorInfo()[2] : $stmt->errorInfo()[1]));
 	}
 }
 
@@ -153,7 +171,7 @@ function multi_insert($sql, $rows) {
 	execute($stmt, $values);
 }
 
-function redirect($folder) {
+function redirect($folder = '') {
 	header('Location: ' . BASE_URL . $folder);
 	echo '<a href="' . BASE_URL . $folder . '">Click here if you are not being redirected</a>';
 	exit();

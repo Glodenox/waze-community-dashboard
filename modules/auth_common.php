@@ -1,10 +1,18 @@
 <?php
 
 function retrieve_access($code) {
-	$h = curl_init(sprintf("https://slack.com/api/oauth.access?client_id=%s&client_secret=%s&code=%s&redirect_uri=%s", SLACK_CLIENT_ID, SLACK_CLIENT_SECRET, $code, BASE_URL . 'auth'));
+	$post_data = array(
+		'client_id' => SLACK_CLIENT_ID,
+		'client_secret' => SLACK_CLIENT_SECRET,
+		'code' => $code,
+		'redirect_uri' => BASE_URL . 'auth'
+	);
+	$h = curl_init('https://slack.com/api/openid.connect.token');
 	curl_setopt_array($h, array(
 		CURLOPT_RETURNTRANSFER => true,
-		CURLOPT_HEADER => false
+		CURLOPT_HEADER => false,
+		CURLOPT_POST => true,
+		CURLOPT_POSTFIELDS => http_build_query($post_data)
 	));
 	$access_response = curl_exec($h);
 	curl_close($h);
@@ -33,6 +41,11 @@ function retrieve_user($access_token) {
 		die();
 	}
 	return $user_data;
+}
+
+function jwt_decode($jwt_string) {
+	// Credit: https://www.converticacommerce.com/support-maintenance/security/php-one-liner-decode-jwt-json-web-tokens/
+	return json_decode(base64_decode(str_replace(array('_', '-'), array('/', '+'), explode('.', $jwt_string)[1])));
 }
 
 ?>

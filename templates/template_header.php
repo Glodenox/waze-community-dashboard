@@ -33,7 +33,7 @@
 <?php if (isset($user)) { ?>
 						<li><a href="<?=ROOT_FOLDER?>profile"><img src="<?=$user->avatar?>" style="width:25px;height:25px;border-radius:12px;margin:-5px 0" />&nbsp; <?=$user->name?></a></li>
 <?php } else { ?>
-						<li><a href="https://slack.com/oauth/authorize?scope=identity.basic,identity.team,identity.avatar&amp;client_id=<?=SLACK_CLIENT_ID?>&amp;redirect_uri=<?=BASE_URL.'auth'?>"><i class="fa fa-fw fa-user-times fa-lg"></i>&nbsp; Log In</a></li>
+						<li><a href="https://slack.com/openid/connect/authorize?response_type=code&amp;scope=openid,profile&amp;team=TCKQCM9QS&amp;client_id=<?=SLACK_CLIENT_ID?>&amp;redirect_uri=<?=BASE_URL.'auth'?>"><i class="fa fa-fw fa-user-times fa-lg"></i>&nbsp; Log In</a></li>
 <?php } ?>
 					</ul>
 					<ul class="nav navbar-nav visible-xs-block">

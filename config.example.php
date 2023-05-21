@@ -1,9 +1,11 @@
 <?php
 
 define('DEBUG', false);
+define('COOKIE_LIFETIME', 30*24*60*60);
 
 // Database connection
-define('DB_HOST', 'localhost');
+define('DB_HOST', '127.0.0.1');
+define('DB_PORT', '3306');
 define('DB_DATABASE', '');
 define('DB_USERNAME', '');
 define('DB_PASSWORD', '');
