@@ -96,7 +96,7 @@
 					<div id="report-view" class="hidden">
 						<div class="container-fluid">
 <?php if (!isset($user)) { ?>
-							<div class="alert alert-info"><i class="fa fa-info-circle fa-lg fa-fw"></i> You can perform more actions by <a href="https://slack.com/oauth/authorize?scope=identity.basic,identity.team,identity.avatar&amp;client_id=<?=SLACK_CLIENT_ID?>&amp;redirect_uri=<?=BASE_URL.'auth'?>" class="alert-link">logging in</a>.</div>
+							<div class="alert alert-info"><i class="fa fa-info-circle fa-lg fa-fw"></i> You can perform more actions by <a href="https://slack.com/openid/connect/authorize?response_type=code&amp;scope=openid,profile&amp;team=<?=SLACK_TEAM_ID?>&amp;client_id=<?=SLACK_CLIENT_ID?>&amp;redirect_uri=<?=BASE_URL.'auth'?>" class="alert-link">logging in</a>.</div>
 <?php } ?>
 							<div class="row">
 								<div class="btn-group">

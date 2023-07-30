@@ -26,7 +26,7 @@ function retrieve_access($code) {
 }
 
 function retrieve_user($access_token) {
-	$h = curl_init("https://slack.com/api/users.identity?token={$access_token}");
+	$h = curl_init("https://slack.com/api/openid.connect.userInfo?token=$access_token");
 	curl_setopt_array($h, array(
 		CURLOPT_RETURNTRANSFER => true,
 		CURLOPT_HEADER => false
@@ -36,16 +36,9 @@ function retrieve_user($access_token) {
 	$user_data = json_decode($identify_response);
 
 	if (!$user_data->ok) {
-		$error = 'Retrieving user data failed with error code ' . htmlspecialchars($user_data->error) . '.';
-		require('templates/template_error.php');
-		die();
+		json_fail('Retrieving user data failed with error code ' . htmlspecialchars($user_data->error) . '.');
 	}
 	return $user_data;
-}
-
-function jwt_decode($jwt_string) {
-	// Credit: https://www.converticacommerce.com/support-maintenance/security/php-one-liner-decode-jwt-json-web-tokens/
-	return json_decode(base64_decode(str_replace(array('_', '-'), array('/', '+'), explode('.', $jwt_string)[1])));
 }
 
 ?>

@@ -8,8 +8,10 @@ switch($folders[1]) {
 		}
 		require('modules/auth_common.php');
 		$user_data = retrieve_user($user->slack_access_token);
+		$user_id = $user_data->{'https://slack.com/user_id'};
+		$team_id = $user_data->{'https://slack.com/team_id'};
 		$stmt = $db->prepare('UPDATE dashboard_users SET name = ?, avatar = ?, slack_user_id = ?, slack_team_id = ? WHERE id = ?');
-		execute($stmt, array($user_data->user->name, $user_data->user->image_48, $user_data->user->id, $user_data->team->id, $user->id));
+		execute($stmt, array($user_data->name, $user_data->picture, $user_id, $team_id, $user->id));
 		json_send();
 
 	case 'change_area':
