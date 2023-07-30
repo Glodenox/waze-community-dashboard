@@ -9,7 +9,7 @@
 						<p>The area defined below will be used to decide which reports are of importance to you. Any reports located outside of this area will not count towards the counters in the sidebar.</p>
 						<div id="areaMap" style="height:20vw; position:relative">
 							<div unselectable="on" class="olControlNoSelect" style="position: absolute;top: 10px;z-index: 2000;text-align: center;left: 0;right: 0;" id="heatmap-message">
-								<span style="background-color: #fff;padding: 3px;border: 2px solid #337ab7;color: #777;">Heatmap loading...</span>
+								<span style="background-color:#fff; padding:3px; color:#777;"><i class="fa fa-spinner fa-pulse"></i> Heatmap loading...</span>
 							</div>
 						</div>
 						<h3>Data retrieved from Slack</h3>
@@ -131,6 +131,8 @@ document.getElementById('resync').addEventListener('click', function() {
 });
 var mapProjection = 'EPSG:900913';
 var siteProjection = 'CRS:84';
+OpenLayers.IMAGE_RELOAD_ATTEMPTS = 2;
+
 var bounds = new OpenLayers.Bounds(<?=$management_area->west?>, <?=$management_area->south?>, <?=$management_area->east?>,<?=$management_area->north?>).transform(siteProjection, mapProjection);
 // Management area
 var areaMap = new OpenLayers.Map({
@@ -209,14 +211,19 @@ areaMap.addLayer(heatmap);
 areaMap.raiseLayer(heatmap, -1);
 // Heatmap in management area map
 loadPage('<?=ROOT_FOLDER?>reports/heatmap', {}, function() {
-	var heatmapData = [];
-	this.response.heatmap.forEach(function(entry) {
-		var point = new OpenLayers.Geometry.Point(entry.lon, entry.lat).transform(siteProjection, mapProjection)
-		heatmapData.push(new OpenLayers.Feature.Vector(point, { count: entry.reports}));
-	});
-	heatmap.addFeatures(heatmapData);
+	if (this.response && this.response.heatmap && this.response.heatmap.length > 0) {
+		var heatmapData = [];
+		this.response.heatmap.forEach(function(entry) {
+			var point = new OpenLayers.Geometry.Point(entry.lon, entry.lat).transform(siteProjection, mapProjection)
+			heatmapData.push(new OpenLayers.Feature.Vector(point, { count: entry.reports}));
+		});
+		heatmap.addFeatures(heatmapData);
+	}
 	document.getElementById('heatmap-message').style.display = 'none';
 });
+<?php
+if (count($action_stats) > 0) {
+?>
 // Statistics
 google.charts.load('current', {'packages':['corechart']});
 google.charts.setOnLoadCallback(function() {
@@ -225,12 +232,11 @@ google.charts.setOnLoadCallback(function() {
 	actions.addColumn('number', 'Times performed');
 	actions.addRows([
 <?php 
-if (count($action_stats) > 0) {
 	$last_key = end($action_stats)->action_id;
 	foreach ($action_stats as $action_stat) {
 		echo "		['" . ACTIONS[$action_stat->action_id] . "'," . $action_stat->total . ']' . ($action_stat->action_id != $last_key ? ',' : '');
 	}
-} ?>
+?>
 	]);
 	var options = { pieHole: 0.4, sliceVisibilityThreshold: 0.05, legend: { position: 'bottom' } };
 	var chart = new google.visualization.PieChart(document.getElementById('actionChart'));
@@ -239,6 +245,9 @@ if (count($action_stats) > 0) {
 		chart.draw(actions, options);
 	});
 });
+<?php
+}
+?>
 document.getElementById('autoJumpOn').addEventListener('click', function() {
 	loadPage('<?=ROOT_FOLDER?>profile/change-autojump', { autojump: true }, function() {
 		if (this.response.ok) {
