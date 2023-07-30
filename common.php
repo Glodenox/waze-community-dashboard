@@ -120,9 +120,11 @@ class DBSessionHandler implements SessionHandlerInterface {
 	}
 }
 
-ini_set('session.gc_maxlifetime', 30*24*60*60);
-// Handler registers itself in __construct
-new DBSessionHandler();
+if (array_key_exists('HTTP_USER_AGENT', $_SERVER) && strpos($_SERVER['HTTP_USER_AGENT'], 'Wget') === false) {
+	ini_set('session.gc_maxlifetime', 30*24*60*60);
+	// Handler registers itself in __construct
+	new DBSessionHandler();
+}
 
 function json_encode_safe($value, $options = 0, $depth = 512) {
 	// Deal with PHP bug surrounding precision of floats in json_encode: https://stackoverflow.com/questions/42981409/php7-1-json-encode-float-issue
