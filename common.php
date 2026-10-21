@@ -54,41 +54,15 @@ try {
 
 // make our own PHP session handler
 class DBSessionHandler implements SessionHandlerInterface {
-	public function __construct() {
-		session_set_save_handler(
-			array($this, 'open'),
-			array($this, 'close'),
-			array($this, 'read'),
-			array($this, 'write'),
-			array($this, 'destroy'),
-			array($this, 'gc')
-		);
-		register_shutdown_function('session_write_close');
-		session_name('Dashboard_Session_ID');
-		session_start([
-			'cookie_path' => rtrim(ROOT_FOLDER, '/')
-		]);
-		$current_settings = session_get_cookie_params();
-		// Need to set the cookie manual to update the expires timestamp
-		setcookie(session_name(), session_id(), [
-			'expires' => time() + COOKIE_LIFETIME,
-			'secure' => true,
-			'httponly' => true,
-			'samesite' => 'Lax',
-			'path' => $current_settings['path'],
-			'domain' => $current_settings['domain']
-		]);
-	}
-
-	public function open($save_path, $session_id) {
+	public function open(string $save_path, string $session_id): bool {
 		return true;
 	}
 
-	public function close() {
+	public function close(): bool {
 		return true;
 	}
 
-	public function read($session_id) {
+	public function read(string $session_id): string|false {
 		global $db;
 		$stmt = $db->prepare('SELECT session_data FROM dashboard_user_sessions WHERE session_id = ? AND session_expires > ?');
 		if ($stmt->execute(array($session_id, time()))) {
@@ -99,21 +73,21 @@ class DBSessionHandler implements SessionHandlerInterface {
 		return '';
 	}
 
-	public function write($session_id, $session_data) {
+	public function write(string $session_id, string $session_data): bool {
 		global $db;
 		$expire = time() + COOKIE_LIFETIME;
 		$stmt = $db->prepare('REPLACE INTO dashboard_user_sessions SET session_id = ?, session_expires = ?, session_data = ?, user_agent = ?, ip_address = ?');
 		return $stmt->execute(array($session_id, $expire, $session_data, $_SERVER['HTTP_USER_AGENT'], $_SERVER['REMOTE_ADDR']));
 	}
 
-	public function destroy($session_id) {
+	public function destroy(string $session_id): bool {
 		global $db;
 		$stmt = $db->prepare('DELETE FROM dashboard_user_sessions WHERE session_id = ? LIMIT 1');
 		return $stmt->execute(array($session_id));
 	}
 
 	// Note: ignoring the maxlifetime argument on purpose, we've decided ourselves when to remove
-	public function gc($maxlifetime) {
+	public function gc(int $maxlifetime): int|false {
 		global $db;
 		$stmt = $db->prepare('DELETE FROM dashboard_user_sessions WHERE session_expires < ?');
 		return $stmt->execute(array(time()));
@@ -122,8 +96,22 @@ class DBSessionHandler implements SessionHandlerInterface {
 
 if (array_key_exists('HTTP_USER_AGENT', $_SERVER) && strpos($_SERVER['HTTP_USER_AGENT'], 'Wget') === false) {
 	ini_set('session.gc_maxlifetime', 30*24*60*60);
-	// Handler registers itself in __construct
-	new DBSessionHandler();
+	$handler = new DBSessionHandler();
+	session_set_save_handler($handler, true);
+	session_name('Dashboard_Session_ID');
+	session_start([
+		'cookie_path' => rtrim(ROOT_FOLDER, '/')
+	]);
+	$current_settings = session_get_cookie_params();
+	// Need to set the cookie manual to update the expires timestamp
+	setcookie(session_name(), session_id(), [
+		'expires' => time() + COOKIE_LIFETIME,
+		'secure' => true,
+		'httponly' => true,
+		'samesite' => 'Lax',
+		'path' => $current_settings['path'],
+		'domain' => $current_settings['domain']
+	]);
 }
 
 function json_encode_safe($value, $options = 0, $depth = 512) {
@@ -157,8 +145,8 @@ function json_send($obj = null) {
 
 function execute($stmt, $values) {
 	$result = $stmt->execute($values);
-	if (!$result || strlen($stmt->errorInfo()[2]) > 0) {
-		json_fail("Database statement failed due to: " . (strlen($stmt->errorInfo()[2]) > 0 ? $stmt->errorInfo()[2] : $stmt->errorInfo()[1]));
+	if (!$result || (count($stmt->errorInfo()) >= 3 && $stmt->errorInfo()[2] != null && strlen($stmt->errorInfo()[2]) > 0)) {
+		json_fail("Database statement failed due to: " . (count($stmt->errorInfo()) >= 3 && $stmt->errorInfo()[2] != null && strlen($stmt->errorInfo()[2]) > 0 ? $stmt->errorInfo()[2] : $stmt->errorInfo()[1]));
 	}
 }
 
@@ -213,10 +201,10 @@ function spaceOutCommas($text) {
 function time_elapsed_string($datetime) {
 	$now = new DateTime;
 	$ago = new DateTime($datetime);
-	$diff = $now->diff($ago);
+	$diff = get_object_vars($now->diff($ago));
 
-	$diff->w = floor($diff->d / 7);
-	$diff->d -= $diff->w * 7;
+	$diff['w'] = floor($diff['d'] / 7);
+	$diff['d'] -= $diff['w'] * 7;
 
 	$units = array(
 		'y' => 'year',
@@ -228,8 +216,8 @@ function time_elapsed_string($datetime) {
 	);
 	$string = [];
 	foreach ($units as $unit => $name) {
-		if ($diff->$unit) {
-			$string[] = $diff->$unit . ' ' . $name . ($diff->$unit > 1 ? 's' : '');
+		if (array_key_exists($unit, $diff) && $diff[$unit] > 0) {
+			$string[] = $diff[$unit] . ' ' . $name . ($diff[$unit] > 1 ? 's' : '');
 		}
 	}
 
